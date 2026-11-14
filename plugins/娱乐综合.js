@@ -10,8 +10,13 @@
 // [rule: raw ^(?:/)?疯狂星期四$]
 // [rule: raw ^(?:/)?(?:抖音|视频)解析]
 // [status: true]
+// [admin: false]
 // [public: false]
+// [priority: 0]
 // [class: 娱乐]
+// [icon: https://api.iconify.design/lucide:bot.svg]
+// [origin: 自定义]
+// [depe: []]
 
 /**
  * 使用说明
@@ -37,40 +42,29 @@
  *    需要强制语音条或改用链接时，改「唱一首 音频发送方式」配置即可。
  */
 
-const {
-  sender: s,
-  plugin,
-  Bucket,
-} = require("sillygirl");
+const { sender: s, plugin, Bucket } = require("sillygirl");
 
 const http = require("http");
 const https = require("https");
 const { URL } = require("url");
 
 const Config = new plugin.Form({
-  audioSendMode: plugin.Form
-    .select([
-      { value: "auto", label: "自动：QQ 发语音条，ClawBot 发 mp3 文件" },
-      { value: "record", label: "强制 CQ 语音条（协议端支持才用）" },
-      { value: "file", label: "一律发 mp3 文件" },
-      { value: "link", label: "只发音频链接" },
-    ])
+  audioSendMode: plugin.Form.select([
+    { value: "auto", label: "自动：QQ 发语音条，ClawBot 发 mp3 文件" },
+    { value: "record", label: "强制 CQ 语音条（协议端支持才用）" },
+    { value: "file", label: "一律发 mp3 文件" },
+    { value: "link", label: "只发音频链接" },
+  ])
     .title("唱一首 音频发送方式")
     .description("ClawBot（微信侧）不能主动下发语音气泡，自动模式下改发 mp3 文件")
     .default("auto"),
-  maxVideoSizeMB: plugin.Form
-    .number()
+  maxVideoSizeMB: plugin.Form.number()
     .title("视频大小上限（MB）")
     .description("超过该大小、或地址探测超时的视频只发链接，默认 100")
     .default(100)
     .min(1)
     .max(4096),
-  requestTimeout: plugin.Form
-    .number()
-    .title("请求超时（毫秒）")
-    .default(15000)
-    .min(3000)
-    .max(60000),
+  requestTimeout: plugin.Form.number().title("请求超时（毫秒）").default(15000).min(3000).max(60000),
 });
 
 const DWO_GIRL_VIDEO = "https://openapi.dwo.cc/api/ksvideo";
@@ -85,16 +79,7 @@ const PARSE_CACHE_MS = 30 * 60 * 1000;
 const Store = new Bucket("entertainment-kit");
 
 // 支持 [CQ:image,...] 的平台；web 端只认 file= 参数
-const CQ_PLATFORMS = new Set([
-  "qq",
-  "qqguild",
-  "telegram",
-  "dingtalk",
-  "flowbot",
-  "pagermaid",
-  "clawbot",
-  "web",
-]);
+const CQ_PLATFORMS = new Set(["qq", "qqguild", "telegram", "dingtalk", "flowbot", "pagermaid", "clawbot", "web"]);
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp)(\?|$)/i;
 const VIDEO_EXT = /\.(mp4|mov|m4v|webm|avi)(\?|$)/i;
@@ -143,9 +128,7 @@ async function main() {
     // 必须同时具备命令 + v.douyin.com 短链，缺一不解析
     const link = extractDouyinUrl(parseMatch[1]) || extractDouyinUrl(command);
     if (!link) {
-      await s.reply(
-        "抖音解析需要带上 v.douyin.com 分享链接，例如：\n抖音解析 https://v.douyin.com/xxxxxx/"
-      );
+      await s.reply("抖音解析需要带上 v.douyin.com 分享链接，例如：\n抖音解析 https://v.douyin.com/xxxxxx/");
       return;
     }
     await parseVideo(timeout, config, link);
@@ -153,7 +136,7 @@ async function main() {
   }
 
   await s.reply(
-    "未识别的指令，可用：随机小姐姐 / 随机白丝 / 随机黑丝 / 唱一首 / 疯狂星期四 / 抖音解析 <v.douyin.com 链接>"
+    "未识别的指令，可用：随机小姐姐 / 随机白丝 / 随机黑丝 / 唱一首 / 疯狂星期四 / 抖音解析 <v.douyin.com 链接>",
   );
 }
 
@@ -333,7 +316,7 @@ function cacheKey(link) {
   return "svparse:" + String(link).trim();
 }
 
-const URL_PATTERN = /https?:\/\/[^\s"'<>（）()【】\[\]，。；：！？、]+/g;
+const URL_PATTERN = /https?:\/\/[^\s"'<>（）()【】[\]，。；：！？、]+/g;
 
 function extractUrls(text) {
   const matches = String(text == null ? "" : text).match(URL_PATTERN);
@@ -369,7 +352,9 @@ function withQuery(endpoint, params) {
 }
 
 function normalizeWhitespace(text) {
-  return String(text == null ? "" : text).replace(/\s+/g, " ").trim();
+  return String(text == null ? "" : text)
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 async function randomGirl(timeout) {
@@ -415,8 +400,7 @@ async function sing(timeout, config) {
       throw new Error(`随机点歌接口返回 ${data.code}：${data.msg || "未知错误"}`);
     }
   }
-  const payload =
-    data && typeof data === "object" && data.data && typeof data.data === "object" ? data.data : data;
+  const payload = data && typeof data === "object" && data.data && typeof data.data === "object" ? data.data : data;
 
   const lyrics = firstString(payload, ["lyrics", "lyric", "歌词"]);
   // audiosrc 带 auth_key 时有时效性，取到就立刻发，不做缓存
@@ -463,7 +447,9 @@ async function crazyThursday(timeout) {
     await s.reply(clipText(unescapeNewlines(text), 2000));
   } catch (error) {
     console.error("[entertainmentKit] 疯狂星期四接口失败：", error && error.message ? error.message : error);
-    await s.reply(`疯狂星期四接口请求失败（${error && error.message ? error.message : error}），先给你一条本地文案：\n${randomKfcCopy()}`);
+    await s.reply(
+      `疯狂星期四接口请求失败（${error && error.message ? error.message : error}），先给你一条本地文案：\n${randomKfcCopy()}`,
+    );
   }
 }
 
@@ -606,7 +592,7 @@ function httpGet(targetUrl, headers, timeout) {
               accept: "application/json, text/plain, */*",
               "user-agent": "Mozilla/5.0 (compatible; SillyGirlPlugin/1.0)",
             },
-            headers || {}
+            headers || {},
           ),
         },
         (response) => {
@@ -626,7 +612,7 @@ function httpGet(targetUrl, headers, timeout) {
             }
           });
           response.on("end", () => resolve({ status, body }));
-        }
+        },
       );
       request.setTimeout(timeout, () => {
         request.destroy(new Error(`请求超时（${timeout}ms）`));
@@ -815,7 +801,9 @@ function clipText(text, limit) {
 }
 
 function truncate(text, limit) {
-  const content = String(text == null ? "" : text).replace(/\s+/g, " ").trim();
+  const content = String(text == null ? "" : text)
+    .replace(/\s+/g, " ")
+    .trim();
   if (content.length <= limit) return content;
   return content.slice(0, limit) + "…";
 }
