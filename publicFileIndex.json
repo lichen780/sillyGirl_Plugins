@@ -1,6 +1,6 @@
 {
-  "c70d4691-c84b-6299-11eb-fd07b7a0b22c": {
-    "id": "c70d4691-c84b-6299-11eb-fd07b7a0b22c",
+  "86a7f2cd-3b84-95a6-10ed-7dec69fa2b61": {
+    "id": "86a7f2cd-3b84-95a6-10ed-7dec69fa2b61",
     "name": "chinaMobileToken",
     "title": "中国移动10086签到",
     "author": "SillyGirl",
@@ -18,15 +18,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/chinaMobileToken.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/chinaMobileToken.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/chinaMobileToken.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-12T07:58:15.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-12T07:14:14.000Z"
   },
-  "89591553-f823-f3ea-a50a-bb1a7b7f76e0": {
-    "id": "89591553-f823-f3ea-a50a-bb1a7b7f76e0",
+  "8aeb66ab-7e87-811a-2ba1-348f3334a1cb": {
+    "id": "8aeb66ab-7e87-811a-2ba1-348f3334a1cb",
     "name": "eLeMeCodeDengLu",
     "title": "饿了么Code登录",
     "author": "sillyGirl",
@@ -44,15 +44,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/eLeMeCodeDengLu.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/eLeMeCodeDengLu.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/eLeMeCodeDengLu.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-03T10:49:13.000Z"
   },
-  "973f69c4-2f12-f875-bdc8-92f49061741f": {
-    "id": "973f69c4-2f12-f875-bdc8-92f49061741f",
+  "ca1d3a3e-2256-d425-1f97-5a387f3b432b": {
+    "id": "ca1d3a3e-2256-d425-1f97-5a387f3b432b",
     "name": "emojiChouXiangHua",
     "title": "emoji抽象化",
     "author": "hdbjlizhe",
@@ -70,15 +70,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/emojiChouXiangHua.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/emojiChouXiangHua.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/emojiChouXiangHua.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "9e331de1-3d12-a519-e08a-a7c2ba24a0f5": {
-    "id": "9e331de1-3d12-a519-e08a-a7c2ba24a0f5",
+  "e8df9fe4-c65d-fbc2-08f7-395d1823ccd9": {
+    "id": "e8df9fe4-c65d-fbc2-08f7-395d1823ccd9",
     "name": "fenXiangShengHuo",
     "title": "粉象生活",
     "author": "sillyGirl",
@@ -96,15 +96,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/fenXiangShengHuo.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/fenXiangShengHuo.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/fenXiangShengHuo.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-05T11:02:34.000Z"
   },
-  "f87bce03-b983-64ab-8c63-27e0f1170d3a": {
-    "id": "f87bce03-b983-64ab-8c63-27e0f1170d3a",
+  "c5f697d0-a78b-f2c1-8a2b-238ed07699c3": {
+    "id": "c5f697d0-a78b-f2c1-8a2b-238ed07699c3",
     "name": "guanFangMingLing",
     "title": "官方命令",
     "author": "sillyGirl",
@@ -122,15 +122,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/guanFangMingLing.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/guanFangMingLing.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/guanFangMingLing.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-07-26T05:03:29.000Z"
   },
-  "01be5c41-8d36-506e-ada7-9fb08841ff4f": {
-    "id": "01be5c41-8d36-506e-ada7-9fb08841ff4f",
+  "66773d02-ff8f-1588-d247-e25c0d2aa365": {
+    "id": "66773d02-ff8f-1588-d247-e25c0d2aa365",
     "name": "huShangAYiQianDao",
     "title": "沪上阿姨签到",
     "author": "sillyGirl",
@@ -148,15 +148,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/huShangAYiQianDao.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/huShangAYiQianDao.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/huShangAYiQianDao.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-03T10:49:13.000Z"
   },
-  "16c8bb7e-5d81-27f1-6d9d-3b941f527c21": {
-    "id": "16c8bb7e-5d81-27f1-6d9d-3b941f527c21",
+  "e7acfca1-aef6-6bd8-402d-26b761353fa1": {
+    "id": "e7acfca1-aef6-6bd8-402d-26b761353fa1",
     "name": "ipChange",
     "title": "IP变动通知",
     "author": "smallfawn",
@@ -174,15 +174,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/ipChange.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/ipChange.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/ipChange.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-07-26T05:03:29.000Z"
   },
-  "7c5b44d4-f595-2f26-083b-0a4073402483": {
-    "id": "7c5b44d4-f595-2f26-083b-0a4073402483",
+  "d947027c-ba27-6d5d-575d-1386209df806": {
+    "id": "d947027c-ba27-6d5d-575d-1386209df806",
     "name": "jdCodeLogin",
     "title": "京东CODE登录",
     "author": "smallfawn",
@@ -200,15 +200,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/jdCodeLogin.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/jdCodeLogin.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/jdCodeLogin.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-07-26T05:03:29.000Z"
   },
-  "1e4b7e10-6f92-e764-ca9d-d7e5490df56e": {
-    "id": "1e4b7e10-6f92-e764-ca9d-d7e5490df56e",
+  "41ba8462-7008-c1f5-51d5-f5d4191e9167": {
+    "id": "41ba8462-7008-c1f5-51d5-f5d4191e9167",
     "name": "jdLegacyCore",
     "title": "京东旧版公共模块",
     "author": "sillyGirl",
@@ -226,15 +226,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/jdLegacyCore.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/jdLegacyCore.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/jdLegacyCore.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "26807e41-fa21-6c83-f4fc-07ed76076d85": {
-    "id": "26807e41-fa21-6c83-f4fc-07ed76076d85",
+  "347b8dfc-1c87-3341-df66-7c84c5a57fe7": {
+    "id": "347b8dfc-1c87-3341-df66-7c84c5a57fe7",
     "name": "jiFenKaMi",
     "title": "积分卡密",
     "author": "sillyGirl",
@@ -252,15 +252,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/jiFenKaMi.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/jiFenKaMi.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/jiFenKaMi.js",
     "dependencies": [],
     "module_dependencies": ["./vortoUtils.js"],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "c1a674b2-1239-c79f-2895-a80d38fa665a": {
-    "id": "c1a674b2-1239-c79f-2895-a80d38fa665a",
+  "577e63b1-3b7c-c815-3925-4cf3fd164fb9": {
+    "id": "577e63b1-3b7c-c815-3925-4cf3fd164fb9",
     "name": "jingDongGongJu",
     "title": "京东工具",
     "author": "sillyGirl",
@@ -278,15 +278,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/jingDongGongJu.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/jingDongGongJu.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/jingDongGongJu.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "5f9b5c32-1214-b83f-0150-09309747bbb5": {
-    "id": "5f9b5c32-1214-b83f-0150-09309747bbb5",
+  "7031365d-2868-61ee-d3d0-b1b77c0f0e69": {
+    "id": "7031365d-2868-61ee-d3d0-b1b77c0f0e69",
     "name": "kakanCore",
     "title": "卡看公共模块",
     "author": "sillyGirl",
@@ -304,15 +304,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/kakanCore.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/kakanCore.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/kakanCore.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "01cc833b-8ac2-a051-019c-9de865ebd541": {
-    "id": "01cc833b-8ac2-a051-019c-9de865ebd541",
+  "a51147ad-68ea-db40-22de-fb194c0d1bd7": {
+    "id": "a51147ad-68ea-db40-22de-fb194c0d1bd7",
     "name": "kuwoCore",
     "title": "酷我音乐公共模块",
     "author": "sillyGirl",
@@ -330,15 +330,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/kuwoCore.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/kuwoCore.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/kuwoCore.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "64109f03-3b34-4f54-4592-089f94b57e5c": {
-    "id": "64109f03-3b34-4f54-4592-089f94b57e5c",
+  "3ec55ea8-25c8-1efc-5a39-63cbba8c4164": {
+    "id": "3ec55ea8-25c8-1efc-5a39-63cbba8c4164",
     "name": "linShiYouXiang",
     "title": "临时邮箱",
     "author": "sillyGirl",
@@ -356,41 +356,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/linShiYouXiang.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/linShiYouXiang.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/linShiYouXiang.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-07T08:12:17.000Z"
   },
-  "e4b8e0b4-c91d-8906-6604-3a5879c5d321": {
-    "id": "e4b8e0b4-c91d-8906-6604-3a5879c5d321",
-    "name": "moHuanShouJiYuLu",
-    "title": "魔幻手机语录",
-    "author": "sillyGirl",
-    "version": "v1.0.3",
-    "desc": "随机回复傻妞和陆小千相关短句",
-    "icon": "https://api.iconify.design/lucide:bot.svg",
-    "class": "娱乐",
-    "rule": "raw ^\\s*(傻妞语录|傻妞台词|陆小千语录|小千语录|小千台词|魔幻手机语录|魔幻手机台词)\\s*$",
-    "cron": "",
-    "status": true,
-    "public": true,
-    "admin": false,
-    "module": false,
-    "on_start": false,
-    "web": false,
-    "carry": false,
-    "path": "plugins/moHuanShouJiYuLu.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/moHuanShouJiYuLu.js",
-    "dependencies": [],
-    "module_dependencies": [],
-    "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
-  },
-  "92adae2c-f535-474c-51a4-d8d266b5b8d6": {
-    "id": "92adae2c-f535-474c-51a4-d8d266b5b8d6",
+  "d0d22b0a-2be6-3d00-3a30-d9cb6e61d3e1": {
+    "id": "d0d22b0a-2be6-3d00-3a30-d9cb6e61d3e1",
     "name": "mrconliAccountRuntime",
     "title": "mrconli账号授权公共模块",
     "author": "mrconli / sillyGirl",
@@ -408,15 +382,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/mrconliAccountRuntime.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/mrconliAccountRuntime.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/mrconliAccountRuntime.js",
     "dependencies": ["undici"],
     "module_dependencies": ["./vortoUtils.js"],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "09edb956-a1c6-f1e2-d474-c00a5ac02035": {
-    "id": "09edb956-a1c6-f1e2-d474-c00a5ac02035",
+  "a5d9f8c2-c052-153e-7b56-01253366487c": {
+    "id": "a5d9f8c2-c052-153e-7b56-01253366487c",
     "name": "ruiXingKaFeiChouJiang",
     "title": "瑞幸咖啡抽奖",
     "author": "sillyGirl",
@@ -434,15 +408,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/ruiXingKaFeiChouJiang.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/ruiXingKaFeiChouJiang.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/ruiXingKaFeiChouJiang.js",
     "dependencies": ["undici"],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-07T08:12:17.000Z"
   },
-  "d0a54515-26f5-5511-d633-f45d8c1cae65": {
-    "id": "d0a54515-26f5-5511-d633-f45d8c1cae65",
+  "723e0933-ec3e-44fe-e35d-59d6d6ccbd75": {
+    "id": "723e0933-ec3e-44fe-e35d-59d6d6ccbd75",
     "name": "shuJuQianYi",
     "title": "数据迁移工具",
     "author": "sillyGirl",
@@ -460,15 +434,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/shuJuQianYi.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/shuJuQianYi.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/shuJuQianYi.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "f5722f18-f02e-9aed-0a6e-70c06c4b41b7": {
-    "id": "f5722f18-f02e-9aed-0a6e-70c06c4b41b7",
+  "a1df3dc2-3e33-b5b2-1501-d8d9ca914461": {
+    "id": "a1df3dc2-3e33-b5b2-1501-d8d9ca914461",
     "name": "smallcatDengLu",
     "title": "smallcat登录",
     "author": "sillyGirl",
@@ -486,15 +460,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/smallcatDengLu.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/smallcatDengLu.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/smallcatDengLu.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-07-26T05:03:29.000Z"
   },
-  "01d02440-040b-2b6f-23e9-3b493920f4e3": {
-    "id": "01d02440-040b-2b6f-23e9-3b493920f4e3",
+  "db1cbe5a-9dd4-937b-e682-319c0ab2fbd9": {
+    "id": "db1cbe5a-9dd4-937b-e682-319c0ab2fbd9",
     "name": "sukanCore",
     "title": "速看小说公共模块",
     "author": "sillyGirl",
@@ -512,15 +486,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/sukanCore.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/sukanCore.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/sukanCore.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "6a6257b9-8574-d5ea-46b3-3f76decf03f1": {
-    "id": "6a6257b9-8574-d5ea-46b3-3f76decf03f1",
+  "bc3fba58-d937-2624-1c1a-9b5bb4befbf7": {
+    "id": "bc3fba58-d937-2624-1c1a-9b5bb4befbf7",
     "name": "tmuyunAccountCore",
     "title": "天目云账户公共模块",
     "author": "sillyGirl",
@@ -538,15 +512,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/tmuyunAccountCore.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/tmuyunAccountCore.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/tmuyunAccountCore.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "fef4398b-b8ce-7e1d-ac3c-296e703c0f9d": {
-    "id": "fef4398b-b8ce-7e1d-ac3c-296e703c0f9d",
+  "2f4ad1cf-c286-5740-7f49-f73f3dd5d822": {
+    "id": "2f4ad1cf-c286-5740-7f49-f73f3dd5d822",
     "name": "tmuyunJinhuaRuntime",
     "title": "天目云金华任务公共模块",
     "author": "601712460 / sillyGirl",
@@ -564,15 +538,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/tmuyunJinhuaRuntime.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/tmuyunJinhuaRuntime.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/tmuyunJinhuaRuntime.js",
     "dependencies": ["undici"],
     "module_dependencies": ["./vortoUtils.js"],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "4178bd87-6d20-ff9e-6089-cd4086276801": {
-    "id": "4178bd87-6d20-ff9e-6089-cd4086276801",
+  "d888cb1a-eec7-64b2-208e-401c676d8520": {
+    "id": "d888cb1a-eec7-64b2-208e-401c676d8520",
     "name": "unicomAssetCore",
     "title": "联通资产公共模块",
     "author": "sillyGirl",
@@ -590,15 +564,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/unicomAssetCore.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/unicomAssetCore.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/unicomAssetCore.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "30bfe66b-4e34-fe98-24de-83a412b27039": {
-    "id": "30bfe66b-4e34-fe98-24de-83a412b27039",
+  "8f55d72b-25e6-809f-173b-0bf703da479c": {
+    "id": "8f55d72b-25e6-809f-173b-0bf703da479c",
     "name": "upsListen",
     "title": "upsListen",
     "author": "smallfawn",
@@ -616,15 +590,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/upsListen.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/upsListen.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/upsListen.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-07-26T05:03:29.000Z"
   },
-  "74d5b4d9-aa92-7bdd-0a43-6dbf7430ae43": {
-    "id": "74d5b4d9-aa92-7bdd-0a43-6dbf7430ae43",
+  "e679eee6-2366-453a-98b2-d7011e45b1dc": {
+    "id": "e679eee6-2366-453a-98b2-d7011e45b1dc",
     "name": "vortoUtils",
     "title": "Vorto JS公共模块",
     "author": "rujingxianghai / sillyGirl",
@@ -642,15 +616,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/vortoUtils.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/vortoUtils.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/vortoUtils.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "4e2eec35-f253-9de7-c77e-f4341f9ecb70": {
-    "id": "4e2eec35-f253-9de7-c77e-f4341f9ecb70",
+  "cd6e6c08-81cf-6ef5-d2a3-2da206bc65a9": {
+    "id": "cd6e6c08-81cf-6ef5-d2a3-2da206bc65a9",
     "name": "wangZheZhanLiChaXun",
     "title": "王者战力查询",
     "author": "sillyGirl",
@@ -668,15 +642,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/wangZheZhanLiChaXun.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/wangZheZhanLiChaXun.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/wangZheZhanLiChaXun.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-07T08:12:17.000Z"
   },
-  "c13cdaba-b2ba-3de9-94aa-fc8c6d54dac7": {
-    "id": "c13cdaba-b2ba-3de9-94aa-fc8c6d54dac7",
+  "56a0ef18-1521-110d-ae88-d45757fcd8c2": {
+    "id": "56a0ef18-1521-110d-ae88-d45757fcd8c2",
     "name": "xianBaoHou",
     "title": "线报猴",
     "author": "sillyGirl",
@@ -694,15 +668,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/xianBaoHou.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/xianBaoHou.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/xianBaoHou.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-07T08:12:17.000Z"
   },
-  "777defdc-d6bf-d237-28d3-d378240d8c58": {
-    "id": "777defdc-d6bf-d237-28d3-d378240d8c58",
+  "d91c8cdd-ee9c-da56-2502-fb8538b4f42f": {
+    "id": "d91c8cdd-ee9c-da56-2502-fb8538b4f42f",
     "name": "xiaomiStepsCore",
     "title": "小米步数公共模块",
     "author": "sillyGirl",
@@ -720,15 +694,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/xiaomiStepsCore.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/xiaomiStepsCore.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/xiaomiStepsCore.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "78450fb2-e4db-a13d-f418-b5af15dac9d2": {
-    "id": "78450fb2-e4db-a13d-f418-b5af15dac9d2",
+  "5cbeca7d-1939-1511-711d-d5d38aad7ba6": {
+    "id": "5cbeca7d-1939-1511-711d-d5d38aad7ba6",
     "name": "xiaoXiYuQunGuanLi",
     "title": "消息与群管理",
     "author": "sillyGirl",
@@ -746,15 +720,15 @@
     "web": false,
     "carry": false,
     "path": "plugins/xiaoXiYuQunGuanLi.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/xiaoXiYuQunGuanLi.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/xiaoXiYuQunGuanLi.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-08T00:04:22.000Z"
   },
-  "e1873a71-3275-7510-0a59-bff91e725422": {
-    "id": "e1873a71-3275-7510-0a59-bff91e725422",
+  "8b475412-1cf6-27fe-eb4b-675ff53d8c5b": {
+    "id": "8b475412-1cf6-27fe-eb4b-675ff53d8c5b",
     "name": "xieQuDaiLi",
     "title": "携趣代理",
     "author": "sillyGirl",
@@ -772,11 +746,11 @@
     "web": false,
     "carry": false,
     "path": "plugins/xieQuDaiLi.js",
-    "raw": "https://raw.githubusercontent.com/smallfawn/sillyGirl_Plugins/main/plugins/xieQuDaiLi.js",
+    "raw": "https://raw.githubusercontent.com/lichen780/sillyGirl_Plugins/main/plugins/xieQuDaiLi.js",
     "dependencies": [],
     "module_dependencies": [],
     "type": "node",
-    "origin": "https://github.com/smallfawn/sillyGirl_Plugins",
-    "create_at": "2026-08-08T00:37:44.000Z"
+    "origin": "https://github.com/lichen780/sillyGirl_Plugins",
+    "create_at": "2026-08-07T08:12:17.000Z"
   }
 }
