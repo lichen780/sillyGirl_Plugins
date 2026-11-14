@@ -12,9 +12,9 @@ plugins/sharedRuntime.js
 每个插件不单独提供 `package.json`。插件依赖写在脚本头部注释里，使用 `[depe: ...]` 声明依赖数组，例如：
 
 ```js
-// [title: getPrinterStatus]
-// [name: getPrinterStatus]
-// [depe: ["ipp"]]
+// [title: ipChange]
+// [name: ipChange]
+// [depe: ["ip"]]
 ```
 
 引用同目录模块时，使用当前文档规定的相对 `.js` 路径；模块自身必须声明 `[module: true]`：
@@ -75,17 +75,26 @@ npm run verify       # 提交前完整检查
 
 `publicFileIndex.json` 由 `scripts/generate-public-file-index.mjs` 自动生成，当前插件文件均为英文文件名；安装页展示中文名来自 `[title: xxx]`，文件 basename 来自 `[name: 文件名]`。
 
-| 示例插件         | 文件                               | 状态 | 说明                                                                     |
-| ---------------- | ---------------------------------- | ---- | ------------------------------------------------------------------------ |
-| IP 变动通知      | `plugins/ipChange.js`              | 可用 | 使用傻妞存储桶保存上次 IP，直接使用 NodeJS `fetch` 查询公网 IP           |
-| getPrinterStatus | `plugins/getPrinterStatus.js`      | 可用 | 使用 `ipp` 查询打印机状态和提交测试图片打印任务，需要手动安装 `ipp` 依赖 |
-| upsListen        | `plugins/upsListen.js`             | 可用 | 使用 NodeJS 内置 `net` 查询 NUT 服务                                     |
-| 官方命令         | `plugins/guanFangMingLing.js`      | 可用 | 支持 `时间`、`版本`、`我是谁`、`更新`、`升级`、`重启`                    |
-| smallcat 登录    | `plugins/smallcatDengLu.js`        | 可用 | 使用 SmallCat 容器完成登录和退出                                         |
-| 饿了么 Code 登录 | `plugins/eLeMeCodeDengLu.js`       | 可用 | 用 Code 换取 Cookie 并同步容器变量                                       |
-| 沪上阿姨签到     | `plugins/huShangAYiQianDao.js`     | 可用 | 完成会员登录、手机号绑定及每日签到                                       |
-| 瑞幸咖啡抽奖     | `plugins/ruiXingKaFeiChouJiang.js` | 可用 | 完成瑞幸登录、活动校验、抽奖及中奖记录查询                               |
-| 美团 Code 登录   | `plugins/meiTuanCodeDengLu.js`     | 可用 | 生成签名参数并换取 `MT_TOKEN`                                            |
+当前库内共 30 个文件（业务插件 + 共享模块），按作者收敛：`sillyGirl`（含联合署名）、`smallfawn` 署名的插件，外加 `emojiChouXiangHua.js`。
+
+| 插件             | 文件                               | 状态 | 说明                                                           |
+| ---------------- | ---------------------------------- | ---- | -------------------------------------------------------------- |
+| 官方命令         | `plugins/guanFangMingLing.js`      | 可用 | 支持 `时间`、`版本`、`我是谁`、`更新`、`升级`、`重启`          |
+| IP 变动通知      | `plugins/ipChange.js`              | 可用 | 使用傻妞存储桶保存上次 IP，直接使用 NodeJS `fetch` 查询公网 IP |
+| 消息与群管理     | `plugins/xiaoXiYuQunGuanLi.js`     | 可用 | 人工通知、消息推送、QQ 关联与 Vorto 入群验证                   |
+| smallcat 登录    | `plugins/smallcatDengLu.js`        | 可用 | 使用 SmallCat 容器完成登录和退出                               |
+| 饿了么 Code 登录 | `plugins/eLeMeCodeDengLu.js`       | 可用 | 用 Code 换取 Cookie 并同步容器变量                             |
+| 中国移动签到     | `plugins/chinaMobileToken.js`      | 可用 | 通过 SmallCat OAuth 获取 10086 授权 Cookie 并签到              |
+| 沪上阿姨签到     | `plugins/huShangAYiQianDao.js`     | 可用 | 完成会员登录、手机号绑定及每日签到                             |
+| 瑞幸咖啡抽奖     | `plugins/ruiXingKaFeiChouJiang.js` | 可用 | 完成瑞幸登录、活动校验、抽奖及中奖记录查询                     |
+| 京东工具         | `plugins/jingDongGongJu.js`        | 可用 | CK 去重、失效汇总、跨容器传输与任务触发                        |
+| 京东 Code 登录   | `plugins/jdCodeLogin.js`           | 可用 | 使用 Code 换取京东 Cookie 并写入青龙变量                       |
+| UPS 通知         | `plugins/upsListen.js`             | 可用 | 使用 NodeJS 内置 `net` 查询 NUT 服务（默认 `status: false`）   |
+| 临时邮箱         | `plugins/linShiYouXiang.js`        | 可用 | 创建 Mail.tm 临时邮箱并等待首封来信                            |
+| emoji 抽象化     | `plugins/emojiChouXiangHua.js`     | 可用 | 文本整段转换为 emoji 表达                                      |
+| 王者战力查询     | `plugins/wangZheZhanLiChaXun.js`   | 可用 | 查询王者荣耀英雄最低战力地区                                   |
+
+共享模块（`[module: true]`，不可单独删除）：`jdLegacyCore`、`kakanCore`、`kuwoCore`、`sukanCore`、`tmuyunAccountCore`、`tmuyunJinhuaRuntime`、`unicomAssetCore`、`xiaomiStepsCore`、`vortoUtils`、`mrconliAccountRuntime`。
 
 ## 兼容差异
 
