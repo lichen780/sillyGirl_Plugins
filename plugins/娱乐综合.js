@@ -2,7 +2,7 @@
 // [name: 娱乐综合]
 // [desc: 随机小姐姐视频、白丝/黑丝图片、唱一首（歌词+音频）、疯狂星期四文案、短视频/抖音解析]
 // [author: lichen]
-// [version: v1.2.5]
+// [version: v1.2.10-helper]
 // [rule: raw ^(?:/)?随机小姐姐$]
 // [rule: raw ^(?:/)?随机白丝$]
 // [rule: raw ^(?:/)?随机黑丝$]
@@ -18,29 +18,7 @@
 // [origin: 自定义]
 // [depe: []]
 
-/**
- * 使用说明
- * 1. 把本文件放到 /data/plugins/local/entertainmentKit.js（Windows 默认在 C:\ProgramData\sillyGirl\plugins\local\）。
- * 2. 六个命令全部是公开免费接口，装上即可用，不需要任何配置：
- *    随机小姐姐 = GET https://openapi.dwo.cc/api/ksvideo（返回 mp4）
- *    随机白丝   = GET https://openapi.dwo.cc/api/bs_jk?type=json（返回 image_url）
- *    随机黑丝   = GET https://openapi.dwo.cc/api/hs_img（返回 数据.pic）
- *    唱一首     = GET https://api.pearapi.ai/api/click_music（歌词 data.lyrics + 音频 data.audiosrc）
- *    疯狂星期四 = GET https://api.pearapi.ai/api/kfc?type=json（文案 text）
- *    抖音解析   = GET https://openapi.dwo.cc/api/svparse?url=...（title / cover / url，限流 5 次/分钟）
- * 3. 解析结果按链接缓存 30 分钟，避免重复调用烧掉接口频率；解析失败会带上游原始错误。
- *    触发方式：同一条消息里必须同时出现「抖音解析」（或「视频解析」）和 v.douyin.com 短链。
- *    常见用法是直接转发抖音分享文本，然后在最前面加上「抖音解析」四个字，例如：
- *      抖音解析7.46 05/29 …… https://v.douyin.com/xxxxxx/ 复制此链接，打开Dou音搜索，直接观看视频！
- *    只发链接、不带「抖音解析」的消息插件完全不响应；只写「抖音解析」不带链接会提示用法。
- *    普通 douyin.com 网页链接不算，必须是 v.douyin.com 短链。
- * 4. 视频体积保护：发送前探测视频大小（HEAD → Range 兜底），超过「视频大小上限（MB，默认 100）」
- *    或探测超时/无法访问时，只发视频链接，避免协议端拉大文件失败。
- * 5. 媒体发送依赖 CQ 码：QQ/QQ频道发图片、视频、语音条；ClawBot 能发图片和视频，
- *    但微信侧不支持机器人主动下发语音气泡，所以「唱一首」在 ClawBot 上自动改发 mp3 文件。
- *    其他平台（如 Telegram 音频、网页端视频）会自动降级为发送链接，避免报错。
- *    需要强制语音条或改用链接时，改「唱一首 音频发送方式」配置即可。
- */
+
 
 const { sender: s, plugin, Bucket } = require("sillygirl");
 
@@ -50,13 +28,13 @@ const { URL } = require("url");
 
 const Config = new plugin.Form({
   audioSendMode: plugin.Form.select([
-    { value: "auto", label: "自动：QQ 发语音条，ClawBot 发 mp3 文件" },
-    { value: "record", label: "强制 CQ 语音条（协议端支持才用）" },
+    { value: "auto", label: "自动：QQ/QQ群/helper(微信) 发语音条，其他平台发文件或链接" },
+    { value: "record", label: "强制语音条（QQ 走 CQ，helper 转微信语音，超过 60 秒截取）" },
     { value: "file", label: "一律发 mp3 文件" },
     { value: "link", label: "只发音频链接" },
   ])
     .title("唱一首 音频发送方式")
-    .description("ClawBot（微信侧）不能主动下发语音气泡，自动模式下改发 mp3 文件")
+    .description("helper 的语音只支持 SILK/WAV 且单条最长 60 秒，超长会截取前 60 秒；转码失败自动退回文件")
     .default("auto"),
   maxVideoSizeMB: plugin.Form.number()
     .title("视频大小上限（MB）")
@@ -78,8 +56,19 @@ const PEAR_KFC = "https://api.pearapi.ai/api/kfc?type=json";
 const PARSE_CACHE_MS = 30 * 60 * 1000;
 const Store = new Bucket("entertainment-kit");
 
-// 支持 [CQ:image,...] 的平台；web 端只认 file= 参数
-const CQ_PLATFORMS = new Set(["qq", "qqguild", "telegram", "dingtalk", "flowbot", "pagermaid", "clawbot", "web"]);
+// 支持 [CQ:image,...] 的平台；web 端只认 file= 参数。
+// helper 是新增的微信通道：适配器会把 CQ 码拆成媒体条目交给 helper 插件下载发送。
+const CQ_PLATFORMS = new Set([
+  "qq",
+  "qqguild",
+  "telegram",
+  "dingtalk",
+  "flowbot",
+  "pagermaid",
+  "clawbot",
+  "helper",
+  "web",
+]);
 
 const IMAGE_EXT = /\.(jpe?g|png|gif|webp|bmp)(\?|$)/i;
 const VIDEO_EXT = /\.(mp4|mov|m4v|webm|avi)(\?|$)/i;
@@ -100,7 +89,7 @@ async function main() {
   const command = content.replace(/^[\s/／]+/, "");
 
   if (/^随机小姐姐$/.test(command)) {
-    await randomGirl(timeout);
+    await randomGirl(timeout, config);
     return;
   }
   if (/^随机白丝$/.test(command)) {
@@ -126,7 +115,7 @@ async function main() {
   const parseMatch = command.match(/^(?:抖音|视频)解析([\s\S]*)$/);
   if (parseMatch) {
     // 必须同时具备命令 + v.douyin.com 短链，缺一不解析
-    const link = extractDouyinUrl(parseMatch[1]) || extractDouyinUrl(command);
+    const link = extractDouyinUrl(parseMatch[1]);
     if (!link) {
       await s.reply("抖音解析需要带上 v.douyin.com 分享链接，例如：\n抖音解析 https://v.douyin.com/xxxxxx/");
       return;
@@ -140,10 +129,9 @@ async function main() {
   );
 }
 
-async function parseVideo(timeout, config, rawArgs) {
-  const link = pickParseLink(rawArgs);
+async function parseVideo(timeout, config, link) {
   if (!link) {
-    throw new Error("用法：抖音解析 https://v.douyin.com/xxxx/（支持抖音、快手、B站、小红书等链接）");
+    throw new Error("用法：抖音解析 https://v.douyin.com/xxxx/");
   }
 
   let payload = await readParseCache(link);
@@ -330,12 +318,6 @@ function extractDouyinUrl(text) {
   return urls.find((url) => isDouyinShareUrl(url)) || "";
 }
 
-function pickParseLink(text) {
-  const urls = extractUrls(text);
-  if (!urls.length) return "";
-  return urls.find((url) => isDouyinShareUrl(url)) || urls[0];
-}
-
 // 只匹配 v.douyin.com 短链，普通 douyin.com 网页链接不自动触发
 function isDouyinShareUrl(url) {
   return /^https?:\/\/v\.douyin\.com\//i.test(url);
@@ -357,12 +339,13 @@ function normalizeWhitespace(text) {
     .trim();
 }
 
-async function randomGirl(timeout) {
+async function randomGirl(timeout, config) {
   const data = await requestJson(DWO_GIRL_VIDEO, {}, timeout);
   const url = pickMediaUrl(data, ["pic", "video", "video_url", "url", "mp4"], "video");
   if (!url) throw noMediaError("小姐姐视频", data);
   if (VIDEO_EXT.test(url)) {
-    await sendVideo(url);
+    // 和抖音解析走同一套体积保护，避免抽到大文件把协议端拖死
+    await sendVideoWithSizeGuard(url, timeout, config);
     return;
   }
   await sendImage(url);
@@ -405,15 +388,13 @@ async function sing(timeout, config) {
   const lyrics = firstString(payload, ["lyrics", "lyric", "歌词"]);
   // audiosrc 带 auth_key 时有时效性，取到就立刻发，不做缓存
   const audio = firstString(payload, ["audiosrc", "audio_url", "audioUrl", "audio", "music", "url"]);
-  const nickname = firstString(payload, ["nickname", "nick_name", "username"]);
 
   if (!lyrics && !audio) {
     throw new Error("随机点歌接口没有返回歌词或音频：" + truncate(toPlainText(data), 200));
   }
 
   if (lyrics) {
-    const header = nickname ? `随机点歌 · ${nickname}` : "随机点歌";
-    await s.reply(`${header}\n${clipText(normalizeLyrics(lyrics), 2000)}`);
+    await s.reply(`歌词：\n${clipText(normalizeLyrics(lyrics), 2000)}`);
   }
   if (audio) {
     await sendRecord(audio, config);
@@ -470,6 +451,8 @@ async function sendImage(url) {
     return;
   }
   if (CQ_PLATFORMS.has(platform)) {
+    // helper 通道同样发 CQ:image，适配器会拆出媒体条目交给 helper 插件下载后用
+    // ctx.send_image 发出；不要在这里改成纯链接，否则微信侧收不到图。
     await s.reply(buildCQ("image", "url", url));
     return;
   }
@@ -478,7 +461,7 @@ async function sendImage(url) {
 
 async function sendVideo(url) {
   const platform = await currentPlatform();
-  if (platform === "qq" || platform === "qqguild" || platform === "clawbot") {
+  if (platform === "qq" || platform === "qqguild" || platform === "clawbot" || platform === "helper") {
     await s.reply(buildCQ("video", "file", url));
     return;
   }
@@ -499,16 +482,19 @@ async function sendRecord(url, config) {
     return;
   }
 
-  if (mode === "record") {
+  // record/voice：CQ 语音条。helper 适配器会把 record 拆成 voice 段，
+  // 插件转成 SILK/WAV 后走 ctx.send_voice；转码失败会自动退回 mp3 文件。
+  // （voice 只保留兼容旧配置，helper 上行为与 record 相同）
+  if (mode === "record" || mode === "voice") {
     await s.reply(buildCQ("record", "file", url));
     return;
   }
 
   // auto：
-  //   QQ / QQ频道 直接发语音条；
-  //   ClawBot 微信侧不支持主动下发语音气泡（用户能发、机器人发不出），改发 mp3 文件；
+  //   QQ / QQ频道 / helper（微信）直接发语音条；
+  //   ClawBot 微信侧暂无语音发送能力，发 mp3 文件；
   //   其余平台降级发链接。
-  if (platform === "qq" || platform === "qqguild") {
+  if (platform === "qq" || platform === "qqguild" || platform === "helper") {
     await s.reply(buildCQ("record", "file", url));
     return;
   }
@@ -603,15 +589,30 @@ function httpGet(targetUrl, headers, timeout) {
             run(new URL(response.headers.location, url).toString());
             return;
           }
+          let finished = false;
+          const fail = (error) => {
+            if (finished) return;
+            finished = true;
+            reject(error);
+          };
+          // 体积超限时 destroy 会让响应流发 'error'，这里必须挂监听，
+          // 否则 Node 会抛未捕获异常把 worker 打挂。
+          response.on("error", fail);
           let body = "";
           response.setEncoding("utf8");
           response.on("data", (chunk) => {
+            if (finished) return;
             body += chunk;
             if (body.length > 2 * 1024 * 1024) {
-              response.destroy(new Error("接口返回内容过大"));
+              fail(new Error("接口返回内容过大"));
+              response.destroy();
             }
           });
-          response.on("end", () => resolve({ status, body }));
+          response.on("end", () => {
+            if (finished) return;
+            finished = true;
+            resolve({ status, body });
+          });
         },
       );
       request.setTimeout(timeout, () => {
@@ -662,14 +663,20 @@ function parseBody(body) {
 // 先按字段名取值，取不到再按媒体后缀兜底扫描
 function pickMediaUrl(data, keys, kind) {
   const byKey = deepFind(data, keys);
-  if (isHttpUrl(byKey) && matchKind(byKey, kind)) return byKey;
-  if (isHttpUrl(byKey)) return byKey;
+  // 字段命中但后缀明显是别的媒体类型（例如 image 接口返回 mp4）时不要硬发
+  if (isHttpUrl(byKey) && (matchKind(byKey, kind) || !matchesAnyMedia(byKey))) {
+    return byKey;
+  }
 
   const urls = scanUrls(data);
   const strict = urls.find((url) => matchKind(url, kind) && !looksLikeApiEndpoint(url));
   if (strict) return strict;
   const loose = urls.find((url) => !looksLikeApiEndpoint(url));
   return loose || "";
+}
+
+function matchesAnyMedia(url) {
+  return IMAGE_EXT.test(url) || VIDEO_EXT.test(url) || AUDIO_EXT.test(url);
 }
 
 function matchKind(url, kind) {
