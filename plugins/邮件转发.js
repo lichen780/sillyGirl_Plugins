@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
 // [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；指令「读取邮箱」正常转发，「读取邮箱测试」只取今天前 3 封且不写去重、不标记已读；定时推送，群聊需白名单]
-// [version: v1.3]
+// [version: v1.4]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -509,8 +509,8 @@ function cleanupAttachments(items) {
 // 发送成功/失败后清掉本地附件，避免磁盘越攒越多。
 // 注意：s.reply / adapter.push 只是把消息放进 Pro 的发送队列，helper 适配器会在
 // 队列消费时才读取本地文件并 upload_file；如果这里立刻删文件，附件就会变成
-// “[文件] 文件名”占位文本。因此默认延迟清理，给发送队列留足上传时间。
-function scheduleCleanup(items, delayMs = 30 * 60 * 1000) {
+// “[文件] 文件名”占位文本。因此发送完成后延迟 1 分钟清理。
+function scheduleCleanup(items, delayMs = 60 * 1000) {
   const list = Array.isArray(items) ? items : [];
   if (!list.length) return;
   const timer = setTimeout(() => cleanupAttachments(list), delayMs);
