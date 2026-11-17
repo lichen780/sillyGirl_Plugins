@@ -1,10 +1,10 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；指令「读取邮件」（默认仅管理员）+ 定时推送，群聊需白名单]
-// [version: v1.1]
+// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；指令「读取邮箱」正常转发，「读取邮箱测试」只取今天前 3 封且不写去重、不标记已读；定时推送，群聊需白名单]
+// [version: v1.3]
 // [author: 黎尘]
 // [class: 工具]
-// [rule: 读取邮件]
+// [rule: raw ^(读取邮箱|读取邮箱测试)$]
 // [status: true]
 // [depe: ["imapflow", "mailparser"]]
 
@@ -496,7 +496,6 @@ function cqAttachment(cfg, item) {
   return `[CQ:file,file=${file},name=${name}]`;
 }
 
-// 发送成功/失败后清掉本地附件，避免磁盘越攒越多
 function cleanupAttachments(items) {
   for (const item of Array.isArray(items) ? items : []) {
     try {
@@ -505,6 +504,17 @@ function cleanupAttachments(items) {
       /* 文件已不存在时忽略 */
     }
   }
+}
+
+// 发送成功/失败后清掉本地附件，避免磁盘越攒越多。
+// 注意：s.reply / adapter.push 只是把消息放进 Pro 的发送队列，helper 适配器会在
+// 队列消费时才读取本地文件并 upload_file；如果这里立刻删文件，附件就会变成
+// “[文件] 文件名”占位文本。因此默认延迟清理，给发送队列留足上传时间。
+function scheduleCleanup(items, delayMs = 30 * 60 * 1000) {
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return;
+  const timer = setTimeout(() => cleanupAttachments(list), delayMs);
+  if (timer && typeof timer.unref === "function") timer.unref();
 }
 
 // 清理进程崩溃等情况遗留的旧附件（只认自己生成的 8 位哈希-序号- 前缀，超过 24 小时才删）
@@ -753,7 +763,9 @@ async function deliverMail(cfg, mail, deliver) {
 // ---------------------------------------------------------------------------
 
 // 只处理「今天收到的」邮件：SINCE 今天 00:00，含已读；更早的一律不看
-async function runForward(cfg, deliver) {
+async function runForward(cfg, deliver, options = {}) {
+  const testMode = Boolean(options.test);
+  const testLimit = 3;
   if (!cfg.host || !cfg.user || !cfg.pass) {
     throw new Error("请先在后台「插件设置 → 邮件转发」里填写 IMAP 服务器、邮箱账号和授权码");
   }
@@ -791,16 +803,18 @@ async function runForward(cfg, deliver) {
 
     // 符合查询条件的邮件全部转发（转发过的不再重复）。
     // 最多扫 200 封，避免大邮箱把这一轮拖死；扫到上限会在日志里说明。
+    // 测试模式只取今天最早的 3 封，且完全跳过「已转发」去重。
     const candidates = [];
     let scanned = 0;
     const scanCap = 200;
-    for (let i = all.length - 1; i >= 0 && scanned < scanCap; i -= 1) {
-      const uid = all[i];
+    const ordered = testMode ? all.slice() : all.slice().reverse();
+    for (const uid of ordered) {
+      if (scanned >= scanCap || (testMode && candidates.length >= testLimit)) break;
       scanned += 1;
       const peek = await client.fetchOne(uid, { envelope: true }, { uid: true });
       if (!peek || !peek.envelope) continue;
       const key = keyFromEnvelope(peek.envelope, uid);
-      if (await store.get(`seen.${key}`, "")) {
+      if (!testMode && (await store.get(`seen.${key}`, ""))) {
         summary.skipped += 1;
         continue;
       }
@@ -811,9 +825,9 @@ async function runForward(cfg, deliver) {
       }
       candidates.push({ uid, key });
     }
-    candidates.reverse(); // 从旧到新转发，读起来更自然
+    if (!testMode) candidates.reverse(); // 从旧到新转发，读起来更自然
 
-    if (scanned >= scanCap && all.length > scanned) {
+    if (!testMode && scanned >= scanCap && all.length > scanned) {
       console.warn(
         `本轮只扫了最近 ${scanned} 封（符合条件共 ${all.length} 封），更早的邮件这次没处理，下次触发还能接着拿`,
       );
@@ -827,7 +841,7 @@ async function runForward(cfg, deliver) {
       }
       const parsed = await simpleParser(fetched.source);
       const key = keyFromParsed(parsed, item.uid);
-      if (key !== item.key) {
+      if (!testMode && key !== item.key) {
         // messageId 缺失时两边的哈希可能不一致，用解析后的键再查一次
         if (await store.get(`seen.${key}`, "")) {
           summary.skipped += 1;
@@ -840,13 +854,14 @@ async function runForward(cfg, deliver) {
       if (attachments.skipped) console.warn(`邮件「${cleanSubject(parsed.subject)}」有 ${attachments.skipped} 个附件超限或为空，已跳过`);
       const mail = buildMail(parsed, cfg, attachments);
 
-      // 先占位再发送：关键词触发与定时任务同时命中同一封邮件时，降低重复转发概率
-      await store.set(`seen.${key}`, Date.now());
+      // 正常模式先占位再发送，降低关键词触发与定时任务重复转发概率；
+      // 测试模式只看今天前 3 封，不写去重、不改已读状态。
+      if (!testMode) await store.set(`seen.${key}`, Date.now());
 
       const result = await deliverMail(cfg, mail, deliver);
       if (!result.ok) {
         // 正文都没发出去：撤销去重占位，下一轮重试
-        await store.delete(`seen.${key}`).catch(() => {});
+        if (!testMode) await store.delete(`seen.${key}`).catch(() => {});
         cleanupAttachments(attachments.saved);
         summary.failed += 1;
         continue;
@@ -855,12 +870,13 @@ async function runForward(cfg, deliver) {
       if (result.attach) summary.forwarded += 1;
       else summary.attachFailed += 1;
 
-      // 附件已经随消息发出，删掉本地文件；只有打开「发送后保留附件文件」才留下
+      // 附件消息只是进了 Pro 的发送队列，等 helper 真正上传完再清理；
+      // 立刻删会让 helper 读不到文件，退化成“[文件] 文件名”文本。
       if (attachments.saved.length && !cfg.keepAttachments) {
-        cleanupAttachments(attachments.saved);
+        scheduleCleanup(attachments.saved);
       }
 
-      if (cfg.markSeen) {
+      if (!testMode && cfg.markSeen) {
         try {
           await client.messageFlagsAdd(item.uid, ["\\Seen"], { uid: true });
         } catch (error) {
@@ -996,12 +1012,24 @@ async function main() {
   let cfg = null;
   let cron = true; // 出错且还没判明场景时，按“无会话”处理，避免 reply 卡住
   let target = { chatId: "", userId: "" };
+  let testMode = false;
 
   try {
     cfg = await loadConfig();
     const run = await detectRun();
     cron = run.cronLike;
     target = { chatId: run.chatId, userId: run.userId };
+
+    if (!cron) {
+      let command = "";
+      try {
+        command = String((await s.getMsg()) ?? "");
+      } catch (_) {
+        /* 部分平台拿不到原文时按普通指令处理 */
+      }
+      // 严格匹配：前后多空格、多字都不算测试指令
+      testMode = command === "读取邮箱测试";
+    }
 
     if (cron) {
       await pruneStore(cfg).catch((error) => console.error(`清理去重记录失败：${errText(error)}`));
@@ -1027,9 +1055,10 @@ async function main() {
       // 「指令仅管理员可用」：非管理员一律不拉邮件（私聊、群聊都管）
       const guard = await checkAdminOnly(cfg);
       if (!guard.ok) {
-        console.log("非管理员触发「读取邮件」，已拒绝");
+        const label = testMode ? "读取邮箱测试" : "读取邮箱";
+        console.log(`非管理员触发「${label}」，已拒绝`);
         await s
-          .reply("「读取邮件」仅限管理员使用。")
+          .reply(`「${label}」仅限管理员使用。`)
           .catch((error) => console.error(`回复权限提示失败：${errText(error)}`));
         return;
       }
@@ -1037,7 +1066,7 @@ async function main() {
 
     // 手动和定时都只处理「今天收到的」邮件，转发过的按去重跳过
     const deliver = cron ? createCronDeliver(cfg, target) : createChatDeliver(cfg);
-    const summary = await runForward(cfg, deliver);
+    const summary = await runForward(cfg, deliver, { test: testMode });
     await report(cron, summary, deliver);
   } catch (error) {
     const message = `邮件转发失败：${errText(error)}`;
