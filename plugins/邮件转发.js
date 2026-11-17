@@ -5,7 +5,6 @@
 // [author: 黎尘]
 // [class: 工具]
 // [rule: 读取邮件]
-// [cron: * * * * *]
 // [status: true]
 // [depe: ["imapflow", "mailparser"]]
 
