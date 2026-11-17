@@ -46,7 +46,9 @@ const Config = new plugin.Form({
 });
 
 const DWO_GIRL_VIDEO = "https://openapi.dwo.cc/api/ksvideo";
-const DWO_WHITE = "https://openapi.dwo.cc/api/bs_jk?type=json";
+// 白丝接口的 JSON 模式返回 d-cn-01.qeq.icu 的图片地址，该域名证书域名不匹配且图片 404。
+// 改用 type=img 直接返回图片，避免拿到坏链接后 helper 下载报 CERTIFICATE_VERIFY_FAILED。
+const DWO_WHITE = "https://openapi.dwo.cc/api/bs_jk?type=img";
 const DWO_BLACK = "https://openapi.dwo.cc/api/hs_img";
 const DWO_SVPARSE = "https://openapi.dwo.cc/api/svparse";
 const PEAR_CLICK_MUSIC = "https://api.pearapi.ai/api/click_music";
@@ -93,7 +95,7 @@ async function main() {
     return;
   }
   if (/^随机白丝$/.test(command)) {
-    await randomWhite(timeout);
+    await randomWhite();
     return;
   }
   if (/^随机黑丝$/.test(command)) {
@@ -351,10 +353,9 @@ async function randomGirl(timeout, config) {
   await sendImage(url);
 }
 
-async function randomWhite(timeout) {
-  const data = await requestJson(DWO_WHITE, {}, timeout);
-  const url = pickMediaUrl(data, ["image_url", "imageUrl", "pic", "url"], "image");
-  if (!url) throw noMediaError("白丝图片", data);
+async function randomWhite() {
+  // 接口每次请求都会返回一张新图；加时间戳避免各平台按同一 URL 缓存。
+  const url = withQuery(DWO_WHITE, { t: Date.now() });
   await sendImage(url);
 }
 
