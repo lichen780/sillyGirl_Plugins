@@ -43,6 +43,22 @@ const Config = new plugin.Form({
     .min(1)
     .max(4096),
   requestTimeout: plugin.Form.number().title("请求超时（毫秒）").default(15000).min(3000).max(60000),
+  adminOnly: plugin.Form.boolean()
+    .title("指令仅管理员可用")
+    .description(
+      "打开后只有后台「管理员」页登记的人能用这些指令；非管理员私聊会收到一句提示，群里静默忽略。\n" +
+        "默认关闭，保持原来的“谁都能用”行为",
+    )
+    .default(false),
+  allowGroups: plugin.Form.string()
+    .title("群白名单")
+    .description(
+      "一行一个，格式「群号#平台」，例如 889900#qq、-1001234567#telegram；同一个平台的多个群用 & 连：889900&998877#qq。\n" +
+        "只写群号=任何平台都放行。私聊不受限制。\n" +
+        "留空=所有群都允许（注意：这点和「邮件转发」相反，那边留空是全拒绝，这里留空是全放行，避免升级后所有群突然失效）",
+    )
+    .format("textarea")
+    .default(""),
 });
 
 const DWO_GIRL_VIDEO = "https://openapi.dwo.cc/api/ksvideo";
@@ -86,6 +102,11 @@ const KFC_FALLBACK = [
 
 async function main() {
   const config = await Config.get();
+
+  // 先过闸门：群不在白名单 / 非管理员都直接结束，一律静默不回（群里私聊都不提示）
+  const access = await checkAccess(config);
+  if (!access.ok) return;
+
   const timeout = normalizeTimeout(config.requestTimeout);
   const content = String((await s.getMsg()) || "").trim();
   const command = content.replace(/^[\s/／]+/, "");
@@ -518,6 +539,89 @@ function audioName(url) {
     // 解析失败就退回默认名
   }
   return "random-song.mp3";
+}
+
+// 群白名单：一行一个「群号#平台」，同平台多个群用 & 连；平台名可省略（=任何平台）
+function parseGroupEntries(value) {
+  const list = [];
+  for (const raw of String(value == null ? "" : value).split(/[\r\n,;，；]+/)) {
+    let text = raw.trim();
+    if (!text || text.startsWith("#")) continue;
+    let platform = "";
+    const hash = text.lastIndexOf("#");
+    if (hash > 0) {
+      const tail = text.slice(hash + 1).trim().toLowerCase();
+      if (/^[a-z][a-z0-9_-]*$/.test(tail)) {
+        platform = tail;
+        text = text.slice(0, hash).trim();
+      }
+    }
+    for (const part of text.split(/[&＆]/)) {
+      const id = part.trim();
+      if (!id) continue;
+      if (list.some((item) => item.platform === platform && item.id === id)) continue;
+      list.push({ platform, id });
+    }
+  }
+  return list;
+}
+
+// 私聊（chatId 为空）一律放行；群必须命中白名单，条目写了平台时平台也要对上。
+// 留空表示所有群都允许——和「邮件转发」的“留空=全拒绝”刻意不同，避免升级后群功能突然全挂
+function groupAllowedByList(list, platform, chatId) {
+  const id = String(chatId || "").trim();
+  if (!id) return true;
+  if (!list.length) return true;
+  const plt = String(platform || "").toLowerCase();
+  return list.some((item) => item.id === id && (!item.platform || !plt || item.platform === plt));
+}
+
+function truthyConfig(value) {
+  if (value === true) return true;
+  return ["true", "1", "yes", "on"].includes(String(value == null ? "" : value).trim().toLowerCase());
+}
+
+async function isAdminSafe() {
+  try {
+    return Boolean(await s.isAdmin());
+  } catch (_) {
+    return false; // 判断失败按非管理员处理（失败关闭）
+  }
+}
+
+// 访问闸门：群白名单（管理员可越过）+ 管理员开关
+// 群不在白名单时一律静默：不回复、也不写日志，调用方直接 return
+async function checkAccess(config) {
+  let chatId = "";
+  try {
+    chatId = String((await s.getChatId()) || "");
+  } catch (_) {
+    chatId = "";
+  }
+  const platform = await currentPlatform();
+
+  let adminChecked = false;
+  let admin = false;
+  // 只在真的需要时才问一次 isAdmin：白名单放行的群、没开管理员开关的私聊都不会多一次 RPC
+  const adminNow = async () => {
+    if (!adminChecked) {
+      adminChecked = true;
+      admin = await isAdminSafe();
+    }
+    return admin;
+  };
+
+  const groups = parseGroupEntries(config && config.allowGroups);
+  if (!groupAllowedByList(groups, platform, chatId) && !(await adminNow())) {
+    // 管理员在非白名单群照常执行；其他人静默丢弃
+    return { ok: false, chatId, platform, reason: "group" };
+  }
+
+  if (truthyConfig(config && config.adminOnly) && !(await adminNow())) {
+    return { ok: false, chatId, platform, reason: "admin" };
+  }
+
+  return { ok: true, chatId, platform };
 }
 
 async function currentPlatform() {
