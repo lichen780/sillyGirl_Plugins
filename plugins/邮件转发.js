@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
 // [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；指令「读取邮箱」正常转发，「读取邮箱测试」只取今天前 3 封且不写去重、不标记已读；定时推送，群聊需白名单]
-// [version: v1.4]
+// [version: v1.5]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -233,7 +233,7 @@ function cleanSubject(value) {
   return neutralizeCQ(str(value).replace(/\s+/g, " ").slice(0, 200));
 }
 
-// 只取邮箱地址，不显示昵称，保持「发件人：xxx@xxx」三行格式干净。
+// 有显示名时输出「显示名 <邮箱>」，没有显示名时只输出邮箱。
 // imapflow 的 envelope.from 是数组，mailparser 的 parsed.from 是 { value: [...] }，
 // 两种都要认，否则发件人白名单会把所有邮件都当成“空的发件人”过滤掉。
 function formatFrom(from) {
@@ -241,11 +241,16 @@ function formatFrom(from) {
   if (Array.isArray(from)) list = from;
   else if (from && Array.isArray(from.value)) list = from.value;
   const first = list.find((item) => item && str(item.address));
-  if (first) return str(first.address);
-  const text = str(from && from.text);
+  if (first) {
+    const address = str(first.address).trim();
+    const name = str(first.name).trim();
+    if (name && name !== address) return `${name} <${address}>`;
+    return address;
+  }
+  const text = str(from && from.text).trim();
   if (!text) return "";
-  const match = text.match(/<([^>]+)>/);
-  return match ? match[1].trim() : text;
+  // 没有结构化数据时，from.text 通常已经是「显示名 <邮箱>」，原样保留
+  return text;
 }
 
 // HTML 邮件退化成纯文本
