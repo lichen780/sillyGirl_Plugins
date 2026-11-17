@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
 // [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；指令「读取邮箱」正常转发，「读取邮箱测试」只取今天前 3 封且不写去重、不标记已读；定时推送，群聊需白名单]
-// [version: v1.5]
+// [version: v1.8]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -13,6 +13,7 @@
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { spawn } = require("child_process");
 
 const { ImapFlow } = require("imapflow");
 const { simpleParser } = require("mailparser");
@@ -445,14 +446,26 @@ function resolveAttachDir(cfg) {
   return dir;
 }
 
+// 同一次转发里出现同名附件时，用 -2、-3 区分，不覆盖前一个文件。
+function uniqueFilePath(dir, name) {
+  let candidate = path.join(dir, name);
+  if (!fs.existsSync(candidate)) return candidate;
+  const ext = path.extname(name);
+  const stem = ext ? name.slice(0, -ext.length) : name;
+  for (let i = 2; i < 100; i += 1) {
+    candidate = path.join(dir, `${stem}-${i}${ext}`);
+    if (!fs.existsSync(candidate)) return candidate;
+  }
+  return path.join(dir, `${stem}-${Date.now()}${ext}`);
+}
+
 // 附件落地到本地，返回可生成 CQ 码的描述对象
-function saveAttachments(cfg, key, attachments) {
+function saveAttachments(cfg, attachments) {
   const list = Array.isArray(attachments) ? attachments : [];
   const result = { saved: [], skipped: 0, inline: 0 };
   if (!list.length) return result;
   const dir = resolveAttachDir(cfg);
   const maxBytes = cfg.maxAttachMB * 1024 * 1024;
-  const prefix = sha1(key).slice(0, 8);
 
   for (let i = 0; i < list.length; i += 1) {
     const item = list[i] || {};
@@ -472,7 +485,7 @@ function saveAttachments(cfg, key, attachments) {
       continue;
     }
     const name = safeFileName(item.filename, i);
-    const filePath = path.join(dir, `${prefix}-${i + 1}-${name}`);
+    const filePath = uniqueFilePath(dir, name);
     try {
       fs.writeFileSync(filePath, content);
       result.saved.push({
@@ -501,28 +514,79 @@ function cqAttachment(cfg, item) {
   return `[CQ:file,file=${file},name=${name}]`;
 }
 
-function cleanupAttachments(items) {
-  for (const item of Array.isArray(items) ? items : []) {
+function attachDirOf(cfg) {
+  return path.isAbsolute(cfg.attachDir)
+    ? cfg.attachDir
+    : path.join(process.cwd(), cfg.attachDir);
+}
+
+// 直接清空附件保存目录里的全部文件（保留目录本身，不递归删子目录）。
+function cleanupAttachDir(cfg) {
+  const dir = attachDirOf(cfg);
+  let names = [];
+  try {
+    names = fs.readdirSync(dir);
+  } catch (_) {
+    return 0;
+  }
+  let removed = 0;
+  for (const name of names) {
+    const full = path.join(dir, name);
     try {
-      fs.unlinkSync(item.path);
+      const info = fs.lstatSync(full);
+      if (info.isFile() || info.isSymbolicLink()) {
+        fs.unlinkSync(full);
+        removed += 1;
+      }
     } catch (_) {
-      /* 文件已不存在时忽略 */
+      /* 单个文件清理失败不影响主流程 */
     }
   }
+  return removed;
 }
 
-// 发送成功/失败后清掉本地附件，避免磁盘越攒越多。
+// 发送成功/失败后清空本地附件目录，避免磁盘越攒越多。
 // 注意：s.reply / adapter.push 只是把消息放进 Pro 的发送队列，helper 适配器会在
 // 队列消费时才读取本地文件并 upload_file；如果这里立刻删文件，附件就会变成
-// “[文件] 文件名”占位文本。因此发送完成后延迟 1 分钟清理。
-function scheduleCleanup(items, delayMs = 60 * 1000) {
-  const list = Array.isArray(items) ? items : [];
-  if (!list.length) return;
-  const timer = setTimeout(() => cleanupAttachments(list), delayMs);
-  if (timer && typeof timer.unref === "function") timer.unref();
+// “[文件] 文件名”占位文本。因此发送完成后延迟 30 秒清理。
+// 插件进程执行完会退出，普通 setTimeout + unref 会随进程一起消失；这里起一个
+// 独立的小清理进程，延迟到点后清空目录，不依赖插件进程继续存活。
+function scheduleCleanup(cfg, delayMs = 30 * 1000) {
+  const dir = attachDirOf(cfg);
+  const payload = Buffer.from(dir, "utf8").toString("base64");
+  const script = `
+const fs = require("fs");
+const path = require("path");
+const dir = Buffer.from(process.argv[1], "base64").toString("utf8");
+setTimeout(() => {
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch (_) { return; }
+  for (const name of names) {
+    const full = path.join(dir, name);
+    try {
+      const info = fs.lstatSync(full);
+      if (info.isFile() || info.isSymbolicLink()) fs.unlinkSync(full);
+    } catch (_) {}
+  }
+}, ${Number(delayMs) || 0});
+`;
+  try {
+    const child = spawn(process.execPath, ["-e", script, payload], {
+      detached: true,
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    child.unref();
+    return;
+  } catch (error) {
+    console.error(`启动附件清理进程失败，改用进程内定时器：${errText(error)}`);
+  }
+
+  // spawn 不可用时至少保持进程内的定时器是 ref 状态，避免主流程立刻退出后不执行
+  setTimeout(() => cleanupAttachDir(cfg), delayMs);
 }
 
-// 清理进程崩溃等情况遗留的旧附件（只认自己生成的 8 位哈希-序号- 前缀，超过 24 小时才删）
+// 清理进程崩溃等情况遗留的旧附件（附件目录归本插件使用，超过 24 小时的文件直接删）
 function pruneAttachDir(cfg) {
   const dir = path.isAbsolute(cfg.attachDir) ? cfg.attachDir : path.join(process.cwd(), cfg.attachDir);
   let names = [];
@@ -534,7 +598,6 @@ function pruneAttachDir(cfg) {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   let removed = 0;
   for (const name of names) {
-    if (!/^[0-9a-f]{8}-\d+-/.test(name)) continue;
     const full = path.join(dir, name);
     try {
       const info = fs.statSync(full);
@@ -854,7 +917,7 @@ async function runForward(cfg, deliver, options = {}) {
         }
       }
 
-      const attachments = saveAttachments(cfg, key, parsed.attachments);
+      const attachments = saveAttachments(cfg, parsed.attachments);
       if (attachments.inline) console.log(`邮件「${cleanSubject(parsed.subject)}」跳过 ${attachments.inline} 个内嵌图片`);
       if (attachments.skipped) console.warn(`邮件「${cleanSubject(parsed.subject)}」有 ${attachments.skipped} 个附件超限或为空，已跳过`);
       const mail = buildMail(parsed, cfg, attachments);
@@ -867,7 +930,7 @@ async function runForward(cfg, deliver, options = {}) {
       if (!result.ok) {
         // 正文都没发出去：撤销去重占位，下一轮重试
         if (!testMode) await store.delete(`seen.${key}`).catch(() => {});
-        cleanupAttachments(attachments.saved);
+        cleanupAttachDir(cfg);
         summary.failed += 1;
         continue;
       }
@@ -878,7 +941,7 @@ async function runForward(cfg, deliver, options = {}) {
       // 附件消息只是进了 Pro 的发送队列，等 helper 真正上传完再清理；
       // 立刻删会让 helper 读不到文件，退化成“[文件] 文件名”文本。
       if (attachments.saved.length && !cfg.keepAttachments) {
-        scheduleCleanup(attachments.saved);
+        scheduleCleanup(cfg);
       }
 
       if (!testMode && cfg.markSeen) {
