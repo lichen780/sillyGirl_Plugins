@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；只有精确「读取邮箱测试」走测试模式，其余口令都按普通读取邮箱处理；手动和 Pro 定时任务触发口令通用]
-// [version: v2.3]
+// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发送时间 / 发件人 / 正文前 50 字」与附件；只有精确「读取邮箱测试」走测试模式，其余口令都按普通读取邮箱处理；手动和 Pro 定时任务触发口令通用]
+// [version: v2.4]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -768,9 +768,20 @@ function createCronDeliver(cfg, target) {
 // 组织一条邮件消息
 // ---------------------------------------------------------------------------
 
+// 邮件自带 Date: 头；缺失或解析失败时显示“未知”
+function mailDateText(value) {
+  const date = value instanceof Date ? value : value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return "(未知)";
+  return (
+    `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ` +
+    `${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
+  );
+}
+
 function buildMail(parsed, cfg, attachments) {
   return {
     subject: cleanSubject(parsed && parsed.subject),
+    date: mailDateText(parsed && parsed.date),
     from: formatFrom(parsed && parsed.from),
     text: neutralizeCQ(limitText(bodyText(parsed), cfg.maxBody)),
     attachments: (attachments && attachments.saved) || [],
@@ -807,6 +818,7 @@ async function sendAttachments(cfg, mail, deliver) {
 async function deliverMail(cfg, mail, deliver) {
   const text = [
     `邮件标题：${mail.subject || "(无标题)"}`,
+    `发送时间：${mail.date || "(未知)"}`,
     `发件人：${mail.from || "(未知)"}`,
     `邮件内容：${mail.text || "(无内容)"}`,
   ].join("\n");
