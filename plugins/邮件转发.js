@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；指令「读取邮箱」正常转发，「读取邮箱测试」只取今天前 3 封且不写去重、不标记已读；定时推送，群聊需白名单]
-// [version: v1.8]
+// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；只有精确「读取邮箱测试」走测试模式，其余口令都按普通读取邮箱处理；手动和 Pro 定时任务触发口令通用]
+// [version: v2.3]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -89,10 +89,6 @@ const config = new plugin.Form({
     .title("附件公网地址前缀")
     .description("填写后附件改用 url= 形式（QQ 官方等需要公网可访问）；留空则用本地 file= 形式")
     .default(""),
-  pushTime: plugin.Form.string()
-    .title("定时推送时间")
-    .description("每天几点推送，24 小时制，多个用逗号分隔，例如 09:00 或 09:00,18:30；填 * 表示每次检查都推送（调试用）；留空表示不推送")
-    .default("09:00"),
   pushTargets: plugin.Form.string()
     .title("定时推送目标")
     .description(
@@ -376,7 +372,6 @@ async function loadConfig() {
     publicBaseUrl: str(values.publicBaseUrl).replace(/\/+$/, ""),
     allowGroups: parseEntries(values.allowGroups),
     adminOnly: boolean(values.adminOnly, true),
-    pushTimes: parsePushTimes(values.pushTime),
     pushTargets: parseEntries(values.pushTargets),
     retainDays: clamp(number(values.retainDays, 30), 1, 365),
   };
@@ -1014,47 +1009,6 @@ function startOfToday() {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
 }
 
-// 定时推送时间：* = 每次都推；09:00,18:30 = 每天这些分钟推；空 = 不推
-function parsePushTimes(value) {
-  // 中文输入法容易打出全角冒号和全角数字，先归一化
-  const raw = str(value)
-    .replace(/[：]/g, ":")
-    .replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xfee0));
-  if (!raw) return { mode: "off", list: [] };
-  if (raw === "*") return { mode: "always", list: [] };
-  const list = [];
-  for (const item of raw.split(/[\s,，;；]+/)) {
-    const match = item.match(/^(\d{1,2}):(\d{2})$/);
-    if (!match) continue;
-    const hour = Number(match[1]);
-    const minute = Number(match[2]);
-    if (hour > 23 || minute > 59) continue;
-    const text = `${pad2(hour)}:${pad2(minute)}`;
-    if (!list.includes(text)) list.push(text);
-  }
-  return list.length ? { mode: "at", list } : { mode: "off", list: [] };
-}
-
-function currentMinute() {
-  const now = new Date();
-  return (
-    `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())} ` +
-    `${pad2(now.getHours())}:${pad2(now.getMinutes())}`
-  );
-}
-
-// 定时任务每分钟唤醒一次，只有命中设置里的时间点才真正取信推送
-async function shouldPushNow(cfg) {
-  if (cfg.pushTimes.mode === "off") return false;
-  if (cfg.pushTimes.mode === "always") return true;
-  const now = new Date();
-  if (!cfg.pushTimes.list.includes(`${pad2(now.getHours())}:${pad2(now.getMinutes())}`)) return false;
-  const stampNow = currentMinute();
-  if (str(await store.get("state.lastPush", "")) === stampNow) return false;
-  await store.set("state.lastPush", stampNow);
-  return true;
-}
-
 // ---------------------------------------------------------------------------
 // 汇总
 // ---------------------------------------------------------------------------
@@ -1076,6 +1030,18 @@ async function report(cron, summary, deliver) {
 // 入口
 // ---------------------------------------------------------------------------
 
+// 只有精确的“读取邮箱测试”走测试模式；其余口令一律按普通读取邮箱处理。
+// 这样以后在 [rule] 或 Pro 定时任务里新增/修改口令，不需要再回来维护命令表。
+const TEST_COMMAND = "读取邮箱测试";
+
+async function currentCommand() {
+  try {
+    return String((await s.getMsg()) ?? "");
+  } catch (_) {
+    return "";
+  }
+}
+
 async function main() {
   let cfg = null;
   let cron = true; // 出错且还没判明场景时，按“无会话”处理，避免 reply 卡住
@@ -1088,16 +1054,12 @@ async function main() {
     cron = run.cronLike;
     target = { chatId: run.chatId, userId: run.userId };
 
-    if (!cron) {
-      let command = "";
-      try {
-        command = String((await s.getMsg()) ?? "");
-      } catch (_) {
-        /* 部分平台拿不到原文时按普通指令处理 */
-      }
-      // 严格匹配：前后多空格、多字都不算测试指令
-      testMode = command === "读取邮箱测试";
-    }
+    // 手动触发和定时任务触发都走这里；不再拦截未登记的口令
+    const command = await currentCommand();
+    testMode = command === TEST_COMMAND;
+    console.log(
+      `${cron ? "定时任务" : "手动"}口令：${JSON.stringify(command)}（test=${testMode}）`,
+    );
 
     if (cron) {
       await pruneStore(cfg).catch((error) => console.error(`清理去重记录失败：${errText(error)}`));
@@ -1108,8 +1070,7 @@ async function main() {
         );
         return;
       }
-      // 没到推送时间就直接退出，不连 IMAP
-      if (!(await shouldPushNow(cfg))) return;
+      // 由 Pro 的定时任务决定什么时候唤醒；唤醒后直接拉取当天邮件
     } else {
       const allowed = await checkGroupAllowed(cfg, run.platform);
       if (!allowed.ok) {
