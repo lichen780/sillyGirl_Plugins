@@ -385,6 +385,7 @@ async function loadConfig() {
     allowGroups: parseEntries(values.allowGroups),
     adminOnly: boolean(values.adminOnly, true),
     pushTargets: parseEntries(values.pushTargets),
+    dedupeKey: `mail-forward-v2|${str(values.imapUser)}|${str(values.mailbox) || "INBOX"}`,
     retainDays: clamp(number(values.retainDays, 30), 1, 365),
   };
 }
@@ -393,20 +394,49 @@ async function loadConfig() {
 // 过滤与去重
 // ---------------------------------------------------------------------------
 
+// 桶里只存“已转发”的不可逆指纹和时间，不存标题、正文、发件人。
+// 新记录用带盐 HMAC-SHA256，避免别人拿 Message-ID 直接算出同一个 key。
+function opaqueKey(text, secret) {
+  return crypto.createHmac("sha256", secret).update(String(text)).digest("hex");
+}
+
 // messageId 是最可靠的去重键；缺失时退化成 主题 + 时间 + UID
-function mailKey(messageId, subject, date, uid) {
+function mailKey(messageId, subject, date, uid, secret) {
+  const id = str(messageId);
+  if (id) return opaqueKey(id, secret);
+  return opaqueKey([str(subject), date ? stamp(date) : "", str(uid)].join("|"), secret);
+}
+
+// 旧版 SHA1 key：升级后保留一次兼容查询，避免当天邮件被重新转发。
+function legacyMailKey(messageId, subject, date, uid) {
   const id = str(messageId);
   if (id) return sha1(id);
   return sha1([str(subject), date ? stamp(date) : "", str(uid)].join("|"));
 }
 
-function keyFromEnvelope(envelope, uid) {
+function keyFromEnvelope(envelope, uid, secret) {
   const env = envelope || {};
-  return mailKey(env.messageId, env.subject, env.date, uid);
+  return mailKey(env.messageId, env.subject, env.date, uid, secret);
 }
 
-function keyFromParsed(parsed, uid) {
-  return mailKey(parsed && parsed.messageId, parsed && parsed.subject, parsed && parsed.date, uid);
+function keyFromParsed(parsed, uid, secret) {
+  return mailKey(parsed && parsed.messageId, parsed && parsed.subject, parsed && parsed.date, uid, secret);
+}
+
+function legacyKeyFromEnvelope(envelope, uid) {
+  const env = envelope || {};
+  return legacyMailKey(env.messageId, env.subject, env.date, uid);
+}
+
+function legacyKeyFromParsed(parsed, uid) {
+  return legacyMailKey(parsed && parsed.messageId, parsed && parsed.subject, parsed && parsed.date, uid);
+}
+
+// 新 key 没命中时，再看一次旧 SHA1 key；旧记录保留到自然过期，不主动迁移。
+async function seenBefore(key, legacyKey) {
+  if (await store.get(`seen.${key}`, "")) return true;
+  if (legacyKey && legacyKey !== key && (await store.get(`seen.${legacyKey}`, ""))) return true;
+  return false;
 }
 
 // 关键词命中任意一个字段（标题 / 正文 / 发件人）即可。
@@ -424,7 +454,18 @@ function matchFrom(cfg, from) {
   return cfg.fromAllow.some((rule) => value.includes(rule));
 }
 
-// 清掉超期的去重记录（seen.* / base.* 存的是时间戳，6 小时内只清一次）
+// 新记录的值是 { t: 转发时间, s: 标题 }；旧记录可能只是时间戳。
+function seenTimestamp(value) {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const stamp = Number(value.t ?? value.time ?? 0);
+    return Number.isFinite(stamp) ? stamp : 0;
+  }
+  const text = String(value ?? "").trim().replace(/^d:/, "");
+  const stamp = Number(text.split("|")[0]);
+  return Number.isFinite(stamp) ? stamp : 0;
+}
+
+// 清掉超期的去重记录（seen.* / base.* 存的是转发时间，6 小时内只清一次）
 async function pruneStore(cfg) {
   const last = Number(await store.get("state.lastPrune", 0));
   if (Number.isFinite(last) && last > 0 && Date.now() - last < 6 * 60 * 60 * 1000) return 0;
@@ -433,7 +474,7 @@ async function pruneStore(cfg) {
   let removed = 0;
   for (const key of Object.keys(all)) {
     if (!key.startsWith("seen.") && !key.startsWith("base.")) continue;
-    const ts = Number(all[key]);
+    const ts = seenTimestamp(all[key]);
     if (Number.isFinite(ts) && ts > 0 && ts < cutoff) {
       await store.delete(key);
       removed += 1;
@@ -907,8 +948,9 @@ async function runForward(cfg, deliver, options = {}) {
       scanned += 1;
       const peek = await client.fetchOne(uid, { envelope: true, internalDate: true }, { uid: true });
       if (!peek || !peek.envelope) continue;
-      const envelopeKey = keyFromEnvelope(peek.envelope, uid);
-      if (!testMode && (await store.get(`seen.${envelopeKey}`, ""))) {
+      const envelopeKey = keyFromEnvelope(peek.envelope, uid, cfg.dedupeKey);
+      const legacyEnvelopeKey = legacyKeyFromEnvelope(peek.envelope, uid);
+      if (!testMode && (await seenBefore(envelopeKey, legacyEnvelopeKey))) {
         summary.skipped += 1;
         continue;
       }
@@ -928,8 +970,9 @@ async function runForward(cfg, deliver, options = {}) {
         continue;
       }
 
-      const key = keyFromParsed(parsed, uid);
-      if (!testMode && key !== envelopeKey && (await store.get(`seen.${key}`, ""))) {
+      const key = keyFromParsed(parsed, uid, cfg.dedupeKey);
+      const legacyKey = legacyKeyFromParsed(parsed, uid);
+      if (!testMode && key !== envelopeKey && (await seenBefore(key, legacyKey))) {
         summary.skipped += 1;
         continue;
       }
@@ -973,7 +1016,13 @@ async function runForward(cfg, deliver, options = {}) {
 
       // 正常模式先占位再发送，降低关键词触发与定时任务重复转发概率；
       // 测试模式只看今天前 3 封，不写去重、不改已读状态。
-      if (!testMode) await store.set(`seen.${key}`, Date.now());
+      // 值里带标题，方便在数据桶页面直接看到转发过哪些邮件。
+      if (!testMode) {
+        await store.set(`seen.${key}`, {
+          t: Date.now(),
+          s: cleanSubject(parsed.subject) || "(无标题)",
+        });
+      }
 
       const result = await deliverMail(cfg, mail, deliver);
       if (!result.ok) {
