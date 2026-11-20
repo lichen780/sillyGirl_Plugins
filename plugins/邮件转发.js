@@ -1,6 +1,6 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发送时间 / 发件人 / 正文前 50 字」与附件；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
+// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 接收时间 / 发送时间 / 发件人 / 正文前 50 字」与附件；按接收时间判断今天；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
 // [version: v1.0]
 // [author: 黎尘]
 // [class: 工具]
@@ -21,7 +21,7 @@ const { simpleParser } = require("mailparser");
 const { sender: s, Bucket, plugin, Adapter } = require("sillygirl");
 
 // 去重 / 初始化状态：一个插件一个桶
-const store = Bucket("email_forward.data");
+const store = Bucket("邮件转发");
 
 // 配置表单必须在顶层构造，后台「插件设置」才会出现表单（见手册 7.4）
 const config = new plugin.Form({
@@ -794,10 +794,11 @@ function mailDateText(value) {
   );
 }
 
-function buildMail(parsed, cfg, attachments) {
+function buildMail(parsed, cfg, attachments, receivedAt) {
   return {
     subject: cleanSubject(parsed && parsed.subject),
-    date: mailDateText(parsed && parsed.date),
+    sent: mailDateText(parsed && parsed.date),
+    received: mailDateText(receivedAt || (parsed && parsed.date)),
     from: formatFrom(parsed && parsed.from),
     text: neutralizeCQ(limitText(bodyText(parsed), cfg.maxBody)),
     attachments: (attachments && attachments.saved) || [],
@@ -834,7 +835,8 @@ async function sendAttachments(cfg, mail, deliver) {
 async function deliverMail(cfg, mail, deliver) {
   const text = [
     `邮件标题：${mail.subject || "(无标题)"}`,
-    `发送时间：${mail.date || "(未知)"}`,
+    `接收时间：${mail.received || "(未知)"}`,
+    `发送时间：${mail.sent || "(未知)"}`,
     `发件人：${mail.from || "(未知)"}`,
     `邮件内容：${mail.text || "(无内容)"}`,
   ].join("\n");
@@ -888,7 +890,7 @@ async function runForward(cfg, deliver, options = {}) {
     await client.connect();
     lock = await client.getMailboxLock(cfg.mailbox);
 
-    // 只要今天收到的（SINCE 今天 00:00，含已读）；昨天及更早的未读不看
+    // 先按 IMAP SINCE 今天取回，解析后再按邮件 Date: 过滤“昨天发出、今天才收到”的邮件
     const found = await client.search({ since: startOfToday() }, { uid: true });
     const all = (Array.isArray(found) ? found.slice() : []).sort((a, b) => a - b);
 
@@ -903,7 +905,7 @@ async function runForward(cfg, deliver, options = {}) {
     for (const uid of ordered) {
       if (scanned >= scanCap || (testMode && candidates.length >= testLimit)) break;
       scanned += 1;
-      const peek = await client.fetchOne(uid, { envelope: true }, { uid: true });
+      const peek = await client.fetchOne(uid, { envelope: true, internalDate: true }, { uid: true });
       if (!peek || !peek.envelope) continue;
       const envelopeKey = keyFromEnvelope(peek.envelope, uid);
       if (!testMode && (await store.get(`seen.${envelopeKey}`, ""))) {
@@ -911,7 +913,7 @@ async function runForward(cfg, deliver, options = {}) {
         continue;
       }
 
-      const fetched = await client.fetchOne(uid, { source: true }, { uid: true });
+      const fetched = await client.fetchOne(uid, { source: true, internalDate: true }, { uid: true });
       if (!fetched || !fetched.source) {
         summary.failed += 1;
         continue;
@@ -932,6 +934,14 @@ async function runForward(cfg, deliver, options = {}) {
         continue;
       }
 
+      // 和网页收件箱一致：按 IMAP 接收时间 internalDate 判断“今天”；
+      // 服务器没给 internalDate 时才退回邮件头 Date:。
+      const receivedAt = fetched.internalDate || peek.internalDate || parsed.date;
+      if (!isTodayMail(receivedAt)) {
+        summary.filtered += 1;
+        continue;
+      }
+
       const subject = cleanSubject(parsed.subject);
       const from = formatFrom(parsed.from) || formatFrom(peek.envelope.from);
       if (
@@ -942,7 +952,7 @@ async function runForward(cfg, deliver, options = {}) {
         continue;
       }
 
-      candidates.push({ uid, key, parsed });
+      candidates.push({ uid, key, parsed, receivedAt });
     }
     if (!testMode) candidates.reverse(); // 从旧到新转发，读起来更自然
 
@@ -959,7 +969,7 @@ async function runForward(cfg, deliver, options = {}) {
       const attachments = saveAttachments(cfg, parsed.attachments);
       if (attachments.inline) console.log(`邮件「${cleanSubject(parsed.subject)}」跳过 ${attachments.inline} 个内嵌图片`);
       if (attachments.skipped) console.warn(`邮件「${cleanSubject(parsed.subject)}」有 ${attachments.skipped} 个附件超限或为空，已跳过`);
-      const mail = buildMail(parsed, cfg, attachments);
+      const mail = buildMail(parsed, cfg, attachments, item.receivedAt);
 
       // 正常模式先占位再发送，降低关键词触发与定时任务重复转发概率；
       // 测试模式只看今天前 3 封，不写去重、不改已读状态。
@@ -1051,6 +1061,19 @@ async function checkAdminOnly(cfg) {
 function startOfToday() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+// 判断一封邮件是否属于“今天”：优先用 IMAP 接收时间 internalDate，
+// 和网页收件箱的日期分组一致；取不到时由调用方回退到邮件头 Date:。
+function isTodayMail(value) {
+  const date = value instanceof Date ? value : value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return true; // 取不到接收时间时不误删
+  const now = new Date();
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  );
 }
 
 // ---------------------------------------------------------------------------
