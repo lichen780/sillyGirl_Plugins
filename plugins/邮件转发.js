@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
 // [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发送时间 / 发件人 / 正文前 50 字」与附件；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
-// [version: v1.5]
+// [version: v1.0]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -87,6 +87,14 @@ const config = new plugin.Form({
     .title("发送后保留附件文件")
     .description("默认关闭：消息发出去就删本地附件；只有平台需要延迟抓取 url= 时才打开")
     .default(false),
+  cleanupDelaySec: plugin.Form.integer()
+    .title("附件删除延迟（秒）")
+    .description(
+      "发送完成后等待多少秒再清空附件目录；默认 30 秒。0 = 立即删除（可能被 helper 的异步上传抢先，导致附件变成 [文件] 文件名），建议 30~60",
+    )
+    .min(0)
+    .max(86400)
+    .default(30),
   publicBaseUrl: plugin.Form.string()
     .title("附件公网地址前缀")
     .description("填写后附件改用 url= 形式（QQ 官方等需要公网可访问）；留空则用本地 file= 形式")
@@ -345,6 +353,7 @@ function safeFileName(name, index) {
 async function loadConfig() {
   const values = (await config.get()) || {};
   const number = (value, fallback) => {
+    if (value === undefined || value === null || str(value).trim() === "") return fallback;
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : fallback;
   };
@@ -371,6 +380,7 @@ async function loadConfig() {
     skipInline: boolean(values.skipInline, true),
     attachDir: str(values.attachDir) || "email-forward-files",
     keepAttachments: boolean(values.keepAttachments, false),
+    cleanupDelaySec: clamp(number(values.cleanupDelaySec, 30), 0, 86400),
     publicBaseUrl: str(values.publicBaseUrl).replace(/\/+$/, ""),
     allowGroups: parseEntries(values.allowGroups),
     adminOnly: boolean(values.adminOnly, true),
@@ -547,10 +557,12 @@ function cleanupAttachDir(cfg) {
 // 发送成功/失败后清空本地附件目录，避免磁盘越攒越多。
 // 注意：s.reply / adapter.push 只是把消息放进 Pro 的发送队列，helper 适配器会在
 // 队列消费时才读取本地文件并 upload_file；如果这里立刻删文件，附件就会变成
-// “[文件] 文件名”占位文本。因此发送完成后延迟 30 秒清理。
+// “[文件] 文件名”占位文本。因此发送完成后按插件设置“附件删除延迟（秒）”清理。
 // 插件进程执行完会退出，普通 setTimeout + unref 会随进程一起消失；这里起一个
 // 独立的小清理进程，延迟到点后清空目录，不依赖插件进程继续存活。
-function scheduleCleanup(cfg, delayMs = 30 * 1000) {
+function scheduleCleanup(cfg) {
+  const delaySec = Math.max(0, Number(cfg.cleanupDelaySec ?? 30) || 0);
+  const delayMs = delaySec * 1000;
   const dir = attachDirOf(cfg);
   const payload = Buffer.from(dir, "utf8").toString("base64");
   const script = `
