@@ -1,6 +1,6 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发送时间 / 发件人 / 正文前 50 字」与附件；只有精确「读取邮箱测试」走测试模式，其余口令都按普通读取邮箱处理；手动和 Pro 定时任务触发口令通用]
+// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发送时间 / 发件人 / 正文前 50 字」与附件；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
 // [version: v1.5]
 // [author: 黎尘]
 // [class: 工具]
@@ -48,12 +48,14 @@ const config = new plugin.Form({
     .title("转发后标记为已读")
     .default(true),
   subjectKeyword: plugin.Form.string()
-    .title("主题关键词过滤")
-    .description("留空表示不过滤；多个关键词用逗号分隔，命中任意一个才转发")
+    .title("关键词过滤")
+    .description(
+      "留空表示不过滤；多个关键词用逗号分隔。标题、正文、发件人（显示名和邮箱）任意一处包含任意一个关键词才转发",
+    )
     .default(""),
   fromAllow: plugin.Form.string()
     .title("发件人白名单")
-    .description("留空表示不限制；可填完整邮箱或域名（如 qq.com），逗号分隔")
+    .description("留空表示不限制；可填完整邮箱或域名（如 qq.com），逗号分隔。关键词过滤和本白名单是「同时满足」关系")
     .default(""),
   maxBodyChars: plugin.Form.integer()
     .title("正文最大字符数")
@@ -397,10 +399,12 @@ function keyFromParsed(parsed, uid) {
   return mailKey(parsed && parsed.messageId, parsed && parsed.subject, parsed && parsed.date, uid);
 }
 
-function matchSubject(cfg, subject) {
+// 关键词命中任意一个字段（标题 / 正文 / 发件人）即可。
+// 发件人用 formatFrom 的结果，同时包含显示名和邮箱。
+function matchKeywords(cfg, subject, text, from) {
   if (!cfg.subjectKeywords.length) return true;
-  const value = str(subject).toLowerCase();
-  return cfg.subjectKeywords.some((keyword) => value.includes(keyword));
+  const fields = [subject, text, from].map((value) => str(value).toLowerCase());
+  return cfg.subjectKeywords.some((keyword) => fields.some((field) => field.includes(keyword)));
 }
 
 function matchFrom(cfg, from) {
@@ -878,7 +882,8 @@ async function runForward(cfg, deliver, options = {}) {
 
     // 符合查询条件的邮件全部转发（转发过的不再重复）。
     // 最多扫 200 封，避免大邮箱把这一轮拖死；扫到上限会在日志里说明。
-    // 测试模式只取今天最早的 3 封，且完全跳过「已转发」去重。
+    // 测试模式只取今天最早的 3 封「命中关键词」的邮件，且完全跳过「已转发」去重。
+    // 关键词匹配标题 / 正文 / 发件人，所以这里要解析完整邮件后才能判断。
     const candidates = [];
     let scanned = 0;
     const scanCap = 200;
@@ -888,17 +893,44 @@ async function runForward(cfg, deliver, options = {}) {
       scanned += 1;
       const peek = await client.fetchOne(uid, { envelope: true }, { uid: true });
       if (!peek || !peek.envelope) continue;
-      const key = keyFromEnvelope(peek.envelope, uid);
-      if (!testMode && (await store.get(`seen.${key}`, ""))) {
+      const envelopeKey = keyFromEnvelope(peek.envelope, uid);
+      if (!testMode && (await store.get(`seen.${envelopeKey}`, ""))) {
         summary.skipped += 1;
         continue;
       }
-      const from = formatFrom(peek.envelope.from);
-      if (!matchSubject(cfg, peek.envelope.subject) || !matchFrom(cfg, from)) {
+
+      const fetched = await client.fetchOne(uid, { source: true }, { uid: true });
+      if (!fetched || !fetched.source) {
+        summary.failed += 1;
+        continue;
+      }
+
+      let parsed;
+      try {
+        parsed = await simpleParser(fetched.source);
+      } catch (error) {
+        console.error(`解析邮件失败（uid=${uid}）：${errText(error)}`);
+        summary.failed += 1;
+        continue;
+      }
+
+      const key = keyFromParsed(parsed, uid);
+      if (!testMode && key !== envelopeKey && (await store.get(`seen.${key}`, ""))) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      const subject = cleanSubject(parsed.subject);
+      const from = formatFrom(parsed.from) || formatFrom(peek.envelope.from);
+      if (
+        !matchKeywords(cfg, subject, bodyText(parsed), from) ||
+        !matchFrom(cfg, from)
+      ) {
         summary.filtered += 1;
         continue;
       }
-      candidates.push({ uid, key });
+
+      candidates.push({ uid, key, parsed });
     }
     if (!testMode) candidates.reverse(); // 从旧到新转发，读起来更自然
 
@@ -909,20 +941,8 @@ async function runForward(cfg, deliver, options = {}) {
     }
 
     for (const item of candidates) {
-      const fetched = await client.fetchOne(item.uid, { source: true }, { uid: true });
-      if (!fetched || !fetched.source) {
-        summary.failed += 1;
-        continue;
-      }
-      const parsed = await simpleParser(fetched.source);
-      const key = keyFromParsed(parsed, item.uid);
-      if (!testMode && key !== item.key) {
-        // messageId 缺失时两边的哈希可能不一致，用解析后的键再查一次
-        if (await store.get(`seen.${key}`, "")) {
-          summary.skipped += 1;
-          continue;
-        }
-      }
+      const parsed = item.parsed;
+      const key = item.key;
 
       const attachments = saveAttachments(cfg, parsed.attachments);
       if (attachments.inline) console.log(`邮件「${cleanSubject(parsed.subject)}」跳过 ${attachments.inline} 个内嵌图片`);
