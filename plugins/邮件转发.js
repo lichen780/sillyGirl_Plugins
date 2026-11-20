@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 接收时间 / 发送时间 / 发件人 / 正文前 50 字」与附件；按接收时间判断今天；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
-// [version: v1.0]
+// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 接收时间 / 发件人 / 正文前 50 字」与附件；按接收时间判断今天；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
+// [version: v1.1]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -454,10 +454,10 @@ function matchFrom(cfg, from) {
   return cfg.fromAllow.some((rule) => value.includes(rule));
 }
 
-// 新记录的值是 { t: 转发时间, s: 标题 }；旧记录可能只是时间戳。
+// 新记录的值是 { 邮件时间, 邮件标题, 转发时间 }；旧记录可能是 { t, s } 或纯时间戳。
 function seenTimestamp(value) {
   if (value && typeof value === "object" && !Array.isArray(value)) {
-    const stamp = Number(value.t ?? value.time ?? 0);
+    const stamp = Number(value["转发时间"] ?? value.t ?? value.time ?? 0);
     return Number.isFinite(stamp) ? stamp : 0;
   }
   const text = String(value ?? "").trim().replace(/^d:/, "");
@@ -838,7 +838,6 @@ function mailDateText(value) {
 function buildMail(parsed, cfg, attachments, receivedAt) {
   return {
     subject: cleanSubject(parsed && parsed.subject),
-    sent: mailDateText(parsed && parsed.date),
     received: mailDateText(receivedAt || (parsed && parsed.date)),
     from: formatFrom(parsed && parsed.from),
     text: neutralizeCQ(limitText(bodyText(parsed), cfg.maxBody)),
@@ -877,7 +876,6 @@ async function deliverMail(cfg, mail, deliver) {
   const text = [
     `邮件标题：${mail.subject || "(无标题)"}`,
     `接收时间：${mail.received || "(未知)"}`,
-    `发送时间：${mail.sent || "(未知)"}`,
     `发件人：${mail.from || "(未知)"}`,
     `邮件内容：${mail.text || "(无内容)"}`,
   ].join("\n");
@@ -1016,11 +1014,12 @@ async function runForward(cfg, deliver, options = {}) {
 
       // 正常模式先占位再发送，降低关键词触发与定时任务重复转发概率；
       // 测试模式只看今天前 3 封，不写去重、不改已读状态。
-      // 值里带标题，方便在数据桶页面直接看到转发过哪些邮件。
+      // 值里带接收时间和标题，方便在数据桶页面直接看到转发过哪些邮件。
       if (!testMode) {
         await store.set(`seen.${key}`, {
-          t: Date.now(),
-          s: cleanSubject(parsed.subject) || "(无标题)",
+          邮件时间: mailDateText(item.receivedAt),
+          邮件标题: cleanSubject(parsed.subject) || "(无标题)",
+          转发时间: Date.now(),
         });
       }
 
