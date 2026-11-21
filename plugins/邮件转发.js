@@ -1,6 +1,6 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 接收时间 / 发件人 / 正文前 50 字」与附件；按接收时间判断今天；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
+// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；按接收时间判断今天；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
 // [version: v1.1]
 // [author: 黎尘]
 // [class: 工具]
@@ -835,10 +835,9 @@ function mailDateText(value) {
   );
 }
 
-function buildMail(parsed, cfg, attachments, receivedAt) {
+function buildMail(parsed, cfg, attachments) {
   return {
     subject: cleanSubject(parsed && parsed.subject),
-    received: mailDateText(receivedAt || (parsed && parsed.date)),
     from: formatFrom(parsed && parsed.from),
     text: neutralizeCQ(limitText(bodyText(parsed), cfg.maxBody)),
     attachments: (attachments && attachments.saved) || [],
@@ -875,7 +874,6 @@ async function sendAttachments(cfg, mail, deliver) {
 async function deliverMail(cfg, mail, deliver) {
   const text = [
     `邮件标题：${mail.subject || "(无标题)"}`,
-    `接收时间：${mail.received || "(未知)"}`,
     `发件人：${mail.from || "(未知)"}`,
     `邮件内容：${mail.text || "(无内容)"}`,
   ].join("\n");
@@ -1010,7 +1008,7 @@ async function runForward(cfg, deliver, options = {}) {
       const attachments = saveAttachments(cfg, parsed.attachments);
       if (attachments.inline) console.log(`邮件「${cleanSubject(parsed.subject)}」跳过 ${attachments.inline} 个内嵌图片`);
       if (attachments.skipped) console.warn(`邮件「${cleanSubject(parsed.subject)}」有 ${attachments.skipped} 个附件超限或为空，已跳过`);
-      const mail = buildMail(parsed, cfg, attachments, item.receivedAt);
+      const mail = buildMail(parsed, cfg, attachments);
 
       // 正常模式先占位再发送，降低关键词触发与定时任务重复转发概率；
       // 测试模式只看今天前 3 封，不写去重、不改已读状态。
