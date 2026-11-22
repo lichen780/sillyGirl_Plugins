@@ -1,7 +1,7 @@
 // [title: 邮件转发]
 // [name: 邮件转发]
-// [desc: 通过 IMAP 拉取当天邮件，转发「标题 / 发件人 / 正文前 50 字」与附件；按接收时间判断今天；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
-// [version: v1.1]
+// [desc: 通过 IMAP 拉取当天邮件，按自定义消息模板转发「标题 / 接收时间 / 发件人 / 正文摘要 / 附件」，模板用 [@邮件标题] 这类占位符；按接收时间判断今天；关键词可匹配标题、正文、发件人（别名和邮箱）；只有精确「读取邮箱测试」走测试模式；手动和 Pro 定时任务触发口令通用]
+// [version: v1.3]
 // [author: 黎尘]
 // [class: 工具]
 // [rule: raw ^(读取邮箱|读取邮箱测试)$]
@@ -63,6 +63,22 @@ const config = new plugin.Form({
     .min(10)
     .max(20000)
     .default(50),
+  messageTemplate: plugin.Form.string()
+    .title("消息模板")
+    .description(
+      "自定义转发消息的文字、字段顺序和保留哪些字段。占位符会被替换成邮件数据：\n" +
+        "[@邮件标题] 邮件标题\n" +
+        "[@接收时间] 邮件接收时间\n" +
+        "[@发件人] 发件人（显示名 + 邮箱）\n" +
+        "[@邮件内容] 正文摘要\n" +
+        "不写的字段就不显示；前面的「标题：」「人：」等文字可以随便改。附件单独发送，由下面「发送附件」开关控制",
+    )
+    .format("textarea")
+    .default("邮件标题：[@邮件标题]\n发件人：[@发件人]\n邮件内容：[@邮件内容]"),
+  showAttachments: plugin.Form.boolean()
+    .title("发送附件")
+    .description("关闭后不保存、也不发送附件，只发模板里的文字")
+    .default(true),
   chunkSize: plugin.Form.integer()
     .title("单条消息最大字符数")
     .description("超长正文会拆成多条发送；建议 1000~1500")
@@ -375,6 +391,9 @@ async function loadConfig() {
     subjectKeywords: parseList(values.subjectKeyword).map((item) => item.toLowerCase()),
     fromAllow: parseList(values.fromAllow).map((item) => item.toLowerCase()),
     maxBody: clamp(number(values.maxBodyChars, 50), 10, 20000),
+    messageTemplate: str(values.messageTemplate) ||
+      "邮件标题：[@邮件标题]\n发件人：[@发件人]\n邮件内容：[@邮件内容]",
+    showAttachments: boolean(values.showAttachments, true),
     chunk: clamp(number(values.chunkSize, 1200), 200, 4000),
     maxAttachMB: clamp(number(values.maxAttachMB, 10), 1, 100),
     skipInline: boolean(values.skipInline, true),
@@ -835,12 +854,13 @@ function mailDateText(value) {
   );
 }
 
-function buildMail(parsed, cfg, attachments) {
+function buildMail(parsed, cfg, attachments, receivedAt) {
   return {
     subject: cleanSubject(parsed && parsed.subject),
+    received: mailDateText(receivedAt || (parsed && parsed.date)),
     from: formatFrom(parsed && parsed.from),
     text: neutralizeCQ(limitText(bodyText(parsed), cfg.maxBody)),
-    attachments: (attachments && attachments.saved) || [],
+    attachments: cfg.showAttachments ? (attachments && attachments.saved) || [] : [],
   };
 }
 
@@ -870,16 +890,37 @@ async function sendAttachments(cfg, mail, deliver) {
   return ok;
 }
 
-// 返回 { ok, attach }：ok=三行正文是否发出，attach=附件是否发出
-async function deliverMail(cfg, mail, deliver) {
-  const text = [
-    `邮件标题：${mail.subject || "(无标题)"}`,
-    `发件人：${mail.from || "(未知)"}`,
-    `邮件内容：${mail.text || "(无内容)"}`,
-  ].join("\n");
+// 把模板里的占位符换成邮件数据；没写的占位符自然就不会出现在消息里
+function renderTemplate(template, mail) {
+  const values = {
+    "[@邮件标题]": mail.subject || "(无标题)",
+    "[@接收时间]": mail.received || "(未知)",
+    "[@发件人]": mail.from || "(未知)",
+    "[@邮件内容]": mail.text || "(无内容)",
+    // 顺手兼容几个短写法
+    "[@标题]": mail.subject || "(无标题)",
+    "[@时间]": mail.received || "(未知)",
+    "[@正文]": mail.text || "(无内容)",
+    "[@内容]": mail.text || "(无内容)",
+  };
+  let text = str(template);
+  for (const [token, value] of Object.entries(values)) {
+    text = text.split(token).join(value);
+  }
+  // 附件不支持塞进文字模板，统一由「发送附件」单独发；模板里写了就清掉占位符
+  text = text.split("[@附件]").join("").trim();
+  return text;
+}
 
-  const sent = await deliver.send(text);
-  if (!sent) return { ok: false, attach: false };
+// 返回 { ok, attach }：ok=文字字段是否发出，attach=附件是否发出
+async function deliverMail(cfg, mail, deliver) {
+  const text = renderTemplate(cfg.messageTemplate, mail);
+
+  // 模板为空时只发附件，不额外发一条空消息
+  if (text) {
+    const sent = await deliver.send(text);
+    if (!sent) return { ok: false, attach: false };
+  }
   // 正文已经发出，附件再失败也不能重发正文，只记日志
   if (!mail.attachments.length) return { ok: true, attach: true };
 
@@ -898,6 +939,9 @@ async function runForward(cfg, deliver, options = {}) {
   const testLimit = 3;
   if (!cfg.host || !cfg.user || !cfg.pass) {
     throw new Error("请先在后台「插件设置 → 邮件转发」里填写 IMAP 服务器、邮箱账号和授权码");
+  }
+  if (!cfg.messageTemplate.trim() && !cfg.showAttachments) {
+    throw new Error("插件设置「消息模板」为空时必须打开「发送附件」，否则没有内容可转发");
   }
 
   const summary = {
@@ -1005,10 +1049,12 @@ async function runForward(cfg, deliver, options = {}) {
       const parsed = item.parsed;
       const key = item.key;
 
-      const attachments = saveAttachments(cfg, parsed.attachments);
+      const attachments = cfg.showAttachments
+        ? saveAttachments(cfg, parsed.attachments)
+        : { saved: [], skipped: 0, inline: 0 };
       if (attachments.inline) console.log(`邮件「${cleanSubject(parsed.subject)}」跳过 ${attachments.inline} 个内嵌图片`);
       if (attachments.skipped) console.warn(`邮件「${cleanSubject(parsed.subject)}」有 ${attachments.skipped} 个附件超限或为空，已跳过`);
-      const mail = buildMail(parsed, cfg, attachments);
+      const mail = buildMail(parsed, cfg, attachments, item.receivedAt);
 
       // 正常模式先占位再发送，降低关键词触发与定时任务重复转发概率；
       // 测试模式只看今天前 3 封，不写去重、不改已读状态。
