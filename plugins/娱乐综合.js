@@ -2,7 +2,7 @@
 // [name: 娱乐综合]
 // [desc: 随机小姐姐视频、白丝/黑丝图片、唱一首（歌词+音频）、疯狂星期四文案、短视频/抖音解析]
 // [author: 黎尘]
-// [version: v1.1]
+// [version: v1.2]
 // [rule: raw ^(?:/)?(?:随机小姐姐|随机白丝|随机黑丝|唱一首|疯狂星期四)$|^(?:/)?(?:抖音|视频)解析[\s\S]*v\.douyin\.com/[A-Za-z0-9_-]+]
 // [status: true]
 // [admin: false]
@@ -73,7 +73,7 @@ const Store = new Bucket("entertainment-kit");
 // helper 是新增的微信通道：适配器会把 CQ 码拆成媒体条目交给 helper 插件下载发送。
 const CQ_PLATFORMS = new Set([
   "qq",
-  "qqguild",
+  "qqbot", // QQ 官方机器人适配器平台 ID
   "telegram",
   "dingtalk",
   "flowbot",
@@ -478,7 +478,12 @@ async function sendImage(url) {
 
 async function sendVideo(url) {
   const platform = await currentPlatform();
-  if (platform === "qq" || platform === "qqguild" || platform === "clawbot" || platform === "helper") {
+  if (
+    platform === "qq" ||
+    platform === "qqbot" ||
+    platform === "clawbot" ||
+    platform === "helper"
+  ) {
     await s.reply(buildCQ("video", "file", url));
     return;
   }
@@ -508,10 +513,10 @@ async function sendRecord(url, config) {
   }
 
   // auto：
-  //   QQ / QQ频道 / helper（微信）直接发语音条；
+  //   QQ / QQ 官方机器人 / helper（微信）直接发语音条；
   //   ClawBot 微信侧暂无语音发送能力，发 mp3 文件；
   //   其余平台降级发链接。
-  if (platform === "qq" || platform === "qqguild" || platform === "helper") {
+  if (platform === "qq" || platform === "qqbot" || platform === "helper") {
     await s.reply(buildCQ("record", "file", url));
     return;
   }
